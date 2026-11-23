@@ -43,7 +43,10 @@ export type BodyStyle =
   | "butterfly"
   | "snapper"
   | "lumba"
-  | "snapturtle";
+  | "snapturtle"
+  | "boxfish"
+  | "seahorse"
+  | "nudibranch";
 
 export interface Species {
   id: string;
@@ -302,6 +305,54 @@ export const SPECIES: Species[] = [
     speed: 65,
     weight: 2,
   },
+  {
+    ...base,
+    id: "boxfish_npc",
+    name: "Boxfish Kuning",
+    style: "boxfish",
+    hRatio: 0.86,
+    eye: 0.34,
+    spots: true,
+    deepPref: "upper",
+    pal: {
+      body: "#ffd826",
+      dark: "#c78506",
+      belly: "#fff5b8",
+      fin: "#ffe978",
+      tail: "#ffdf48",
+      outline: "#3d2502",
+      iris: "#182b4d",
+      spot: "#1c1510",
+    },
+    minR: 5.0,
+    maxR: 7.4,
+    speed: 58,
+    weight: 12,
+  },
+  {
+    ...base,
+    id: "seahorse_npc",
+    name: "Kuda Laut Mahkota",
+    style: "seahorse",
+    hRatio: 1.35,
+    eye: 0.28,
+    deepPref: "upper",
+    pal: {
+      body: "#ff8c9e",
+      dark: "#d6456e",
+      belly: "#ffe49e",
+      fin: "#ffd15c",
+      tail: "#e8547a",
+      outline: "#4a1228",
+      iris: "#1d3557",
+      stripe: "#ffdf6b",
+      spot: "#fff3c4",
+    },
+    minR: 5.2,
+    maxR: 7.8,
+    speed: 48,
+    weight: 12,
+  },
 ];
 
 // Poisonous green-and-brown small fish (1.3x larger than minnow); eating it triggers 2s delayed dizziness.
@@ -329,6 +380,34 @@ export const POISON_FISH: Species = {
   minR: 3.2 * 1.3,
   maxR: 4.8 * 1.3,
   speed: 62,
+  weight: 0,
+};
+
+// Poisonous neon rainbow nudibranch (coral-reef variant); eating it triggers 2s delayed dizziness.
+export const POISON_NUDIBRANCH: Species = {
+  ...base,
+  id: "poison_nudibranch",
+  name: "Siput Laut Pelangi",
+  style: "nudibranch",
+  hRatio: 0.62,
+  eye: 0.24,
+  deepPref: "upper",
+  poisonous: true,
+  spots: true,
+  pal: {
+    body: "#1888ff",
+    dark: "#7c22e8",
+    belly: "#38d8ff",
+    fin: "#ff6e14",
+    tail: "#ff8c1a",
+    outline: "#190c42",
+    iris: "#ffe14a",
+    stripe: "#ff5c0a",
+    spot: "#b44cff",
+  },
+  minR: 4.4,
+  maxR: 6.2,
+  speed: 44,
   weight: 0,
 };
 
@@ -991,6 +1070,70 @@ export const SKINS: Skin[] = [
       iris: "#ff2e55",
       stripe: "#ffe8c8",
       spot: "#ff6b8b",
+    },
+  },
+  {
+    id: "boxfish",
+    name: "Kubus",
+    subtitle: "Boxfish Kuning Polkadot",
+    price: 0,
+    supports3D: true,
+    style: "boxfish",
+    hRatio: 0.86,
+    eye: 0.34,
+    spots: true,
+    pal: {
+      body: "#ffd826",
+      dark: "#c78506",
+      belly: "#fff5b8",
+      fin: "#ffe978",
+      tail: "#ffdf48",
+      outline: "#3d2502",
+      iris: "#182b4d",
+      spot: "#1c1510",
+    },
+  },
+  {
+    id: "seahorse",
+    name: "Mahkota",
+    subtitle: "Kuda Laut Mahkota",
+    price: 0,
+    supports3D: true,
+    style: "seahorse",
+    hRatio: 1.35,
+    eye: 0.28,
+    pal: {
+      body: "#ff8c9e",
+      dark: "#d6456e",
+      belly: "#ffe49e",
+      fin: "#ffd15c",
+      tail: "#e8547a",
+      outline: "#4a1228",
+      iris: "#1d3557",
+      stripe: "#ffdf6b",
+      spot: "#fff3c4",
+    },
+  },
+  {
+    id: "nudibranch",
+    name: "Nudi",
+    subtitle: "Siput Laut Pelangi",
+    price: 0,
+    supports3D: true,
+    style: "nudibranch",
+    hRatio: 0.62,
+    eye: 0.24,
+    spots: true,
+    pal: {
+      body: "#1888ff",
+      dark: "#7c22e8",
+      belly: "#38d8ff",
+      fin: "#ff6e14",
+      tail: "#ff8c1a",
+      outline: "#190c42",
+      iris: "#ffe14a",
+      stripe: "#ff5c0a",
+      spot: "#b44cff",
     },
   },
 ];

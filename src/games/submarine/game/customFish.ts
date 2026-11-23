@@ -10,11 +10,11 @@ import type { Species } from "./species";
  * Every fish is drawn in a normalised space: 1 unit = sprite width, origin = sprite centre,
  * +x = forward (the fish faces right), +y = down.
  */
-export type CustomStyle = "clown" | "idol" | "shark" | "shark_sleek" | "leopard" | "boris" | "andy" | "tang" | "leon" | "orca" | "barracuda" | "sailfish" | "eddy" | "stingray" | "mandarin" | "aurora" | "narwhal" | "seadragon" | "axolotl" | "whaleshark" | "tuna" | "hammerhead" | "butterfly" | "snapper" | "lumba" | "snapturtle";
+export type CustomStyle = "clown" | "idol" | "shark" | "shark_sleek" | "leopard" | "boris" | "andy" | "tang" | "leon" | "orca" | "barracuda" | "sailfish" | "eddy" | "stingray" | "mandarin" | "aurora" | "narwhal" | "seadragon" | "axolotl" | "whaleshark" | "tuna" | "hammerhead" | "butterfly" | "snapper" | "lumba" | "snapturtle" | "boxfish" | "seahorse" | "nudibranch";
 type Expr = "normal" | "happy" | "panic";
 type Ctx = CanvasRenderingContext2D;
 
-const ASPECT: Record<CustomStyle, number> = { clown: 0.72, idol: 0.96, shark: 0.62, shark_sleek: 0.62, leopard: 0.44, boris: 0.84, andy: 0.92, tang: 0.82, leon: 0.94, orca: 0.56, barracuda: 0.50, sailfish: 0.64, eddy: 0.92, stingray: 0.56, mandarin: 0.78, aurora: 0.88, narwhal: 0.56, seadragon: 0.84, axolotl: 0.70, whaleshark: 0.62, tuna: 0.58, hammerhead: 0.62, butterfly: 0.88, snapper: 0.68, lumba: 0.64, snapturtle: 0.62 };
+const ASPECT: Record<CustomStyle, number> = { clown: 0.72, idol: 0.96, shark: 0.62, shark_sleek: 0.62, leopard: 0.44, boris: 0.84, andy: 0.92, tang: 0.82, leon: 0.94, orca: 0.56, barracuda: 0.50, sailfish: 0.64, eddy: 0.92, stingray: 0.56, mandarin: 0.78, aurora: 0.88, narwhal: 0.56, seadragon: 0.84, axolotl: 0.70, whaleshark: 0.62, tuna: 0.58, hammerhead: 0.62, butterfly: 0.88, snapper: 0.68, lumba: 0.64, snapturtle: 0.62, boxfish: 0.86, seahorse: 1.18, nudibranch: 0.62 };
 /** mouth position as a fraction of the sprite width, measured from the sprite centre */
 const MOUTH: Record<CustomStyle, [number, number]> = {
   clown: [0.34, 0.055],
@@ -43,11 +43,14 @@ const MOUTH: Record<CustomStyle, [number, number]> = {
   snapper: [0.39, 0.034],
   lumba: [0.405, 0.035],
   snapturtle: [0.33, 0.032],
+  boxfish: [0.27, 0.03],
+  seahorse: [0.23, -0.21],
+  nudibranch: [0.31, 0.05],
 };
 
 // (plain boolean on purpose: the legacy renderer keeps its own style checks type-valid)
 export const isCustomStyle = (st: string): boolean =>
-  st === "clown" || st === "idol" || st === "shark" || st === "shark_sleek" || st === "leopard" || st === "boris" || st === "andy" || st === "tang" || st === "leon" || st === "orca" || st === "barracuda" || st === "sailfish" || st === "eddy" || st === "stingray" || st === "mandarin" || st === "aurora" || st === "narwhal" || st === "seadragon" || st === "axolotl" || st === "whaleshark" || st === "tuna" || st === "hammerhead" || st === "butterfly" || st === "snapper" || st === "lumba" || st === "snapturtle";
+  st === "clown" || st === "idol" || st === "shark" || st === "shark_sleek" || st === "leopard" || st === "boris" || st === "andy" || st === "tang" || st === "leon" || st === "orca" || st === "barracuda" || st === "sailfish" || st === "eddy" || st === "stingray" || st === "mandarin" || st === "aurora" || st === "narwhal" || st === "seadragon" || st === "axolotl" || st === "whaleshark" || st === "tuna" || st === "hammerhead" || st === "butterfly" || st === "snapper" || st === "lumba" || st === "snapturtle" || st === "boxfish" || st === "seahorse" || st === "nudibranch";
 export const customMouthOffset = (st: string, drawW: number): [number, number] => {
   const m = MOUTH[st as CustomStyle];
   return [m[0] * drawW, m[1] * drawW];
@@ -9224,6 +9227,341 @@ function drawSnapturtle(c: Ctx, sp: Species, p: Pose) {
   c.restore();
 }
 
+function drawBoxfish(c: Ctx, sp: Species, p: Pose) {
+  const pal = sp.pal;
+  const B = pal.body || "#ffd826";
+  const D = pal.dark || "#c78506";
+  const BEL = pal.belly || "#fff5b8";
+  const FIN = pal.fin || "#ffe978";
+  const SPOT = pal.spot || "#1c1510";
+  const wagFast = Math.sin((p.phase ?? 0) * 2.2) * 0.28;
+
+  // Rapid-fluttering tiny fanned tail
+  c.save();
+  c.translate(-0.22, 0);
+  c.rotate(wagFast * 0.55);
+  fillStroke(
+    c,
+    () => {
+      c.moveTo(0.01, -0.03);
+      c.bezierCurveTo(-0.06, -0.1, -0.125, -0.09, -0.135, -0.04);
+      c.quadraticCurveTo(-0.145, 0, -0.135, 0.04);
+      c.bezierCurveTo(-0.125, 0.09, -0.06, 0.1, 0.01, 0.03);
+    },
+    lin(c, 0, 0, -0.14, 0, [[0, B], [0.6, FIN], [1, rgba(BEL, 0.82)]]),
+    D,
+    0.01
+  );
+  c.restore();
+
+  // Tiny upper dorsal & lower anal fins
+  fillStroke(
+    c,
+    () => {
+      c.moveTo(-0.08, -0.19);
+      c.bezierCurveTo(-0.1, -0.265, -0.16, -0.27, -0.175, -0.22);
+      c.lineTo(-0.13, -0.17);
+    },
+    rgba(FIN, 0.88),
+    D,
+    0.01
+  );
+  fillStroke(
+    c,
+    () => {
+      c.moveTo(-0.08, 0.19);
+      c.bezierCurveTo(-0.1, 0.265, -0.16, 0.27, -0.175, 0.22);
+      c.lineTo(-0.13, 0.17);
+    },
+    rgba(FIN, 0.88),
+    D,
+    0.01
+  );
+
+  // Cube/dice-shaped yellow body with black polka-dots
+  fillStroke(
+    c,
+    () => {
+      c.moveTo(-0.22, -0.04);
+      c.bezierCurveTo(-0.2, -0.175, -0.14, -0.21, 0.01, -0.21);
+      c.bezierCurveTo(0.15, -0.21, 0.22, -0.165, 0.255, -0.015);
+      c.lineTo(0.255, 0.025 + p.open * 0.04);
+      c.bezierCurveTo(0.22, 0.17, 0.15, 0.212, 0.01, 0.212);
+      c.bezierCurveTo(-0.14, 0.212, -0.2, 0.175, -0.22, 0.04);
+    },
+    lin(c, 0, -0.21, 0, 0.21, [[0, mix(D, B, 0.45)], [0.26, B], [0.74, B], [1, mix(BEL, B, 0.45)]]),
+    D,
+    0.012,
+    () => {
+      glow(c, 0.02, -0.08, 0.2, 0.09, 0, "255,250,210", 0.35);
+      for (const [dx, dy, dr] of [
+        [-0.15, -0.095, 0.018],
+        [-0.08, -0.135, 0.022],
+        [0.015, -0.145, 0.02],
+        [0.1, -0.125, 0.017],
+        [-0.14, 0.01, 0.022],
+        [-0.055, -0.025, 0.024],
+        [0.04, -0.03, 0.021],
+        [-0.12, 0.115, 0.019],
+        [-0.02, 0.105, 0.023],
+        [0.07, 0.12, 0.017],
+      ] as [number, number, number][]) {
+        c.fillStyle = rgba(BEL, 0.5);
+        blob(c, dx, dy, dr * 1.22, dr * 1.22);
+        c.fillStyle = SPOT;
+        blob(c, dx, dy, dr, dr);
+      }
+      glow(c, 0.14, 0.065, 0.035, 0.022, 0, "255,120,120", 0.38);
+    }
+  );
+
+  // Tiny fast-fluttering cheek pectoral fin
+  c.save();
+  c.translate(0.068, 0.018);
+  c.rotate(wagFast * 0.85);
+  fillStroke(
+    c,
+    () => {
+      c.moveTo(0, -0.012);
+      c.bezierCurveTo(-0.036, -0.048, -0.08, -0.032, -0.08, 0.004);
+      c.bezierCurveTo(-0.075, 0.038, -0.03, 0.044, 0, 0.012);
+    },
+    rgba(FIN, 0.76),
+    D,
+    0.008
+  );
+  c.restore();
+
+  eye(c, 0.156, -0.068, 0.046, {
+    iris: pal.iris || "#182b4d",
+    expr: p.expr,
+    ol: D,
+    sx: 0.94,
+    look: 0.24,
+    happyCol: "#3d2502",
+  });
+}
+
+function drawSeahorse(c: Ctx, sp: Species, p: Pose) {
+  const pal = sp.pal;
+  const B = pal.body || "#ff8c9e";
+  const D = pal.dark || "#d6456e";
+  const BEL = pal.belly || "#ffe49e";
+  const FIN = pal.fin || "#ffd15c";
+  const bob = Math.sin((p.phase ?? 0)) * 0.016;
+  const buzz = Math.sin((p.phase ?? 0) * 3.0) * 0.32;
+
+  c.save();
+  c.translate(0, bob);
+
+  // Rapidly fluttering golden-pink dorsal wing fin
+  c.save();
+  c.translate(-0.075, -0.02);
+  c.scale(1 + buzz * 0.18, 1);
+  fillStroke(
+    c,
+    () => {
+      c.moveTo(0, -0.075);
+      c.bezierCurveTo(-0.085, -0.1, -0.155, -0.06, -0.155, 0);
+      c.bezierCurveTo(-0.155, 0.06, -0.085, 0.095, 0, 0.07);
+    },
+    lin(c, 0, 0, -0.15, 0, [[0, B], [0.55, FIN], [1, rgba(BEL, 0.75)]]),
+    D,
+    0.008
+  );
+  c.restore();
+
+  // Royal 5-point crown on head
+  fillStroke(
+    c,
+    () => {
+      c.moveTo(-0.065, -0.295);
+      c.lineTo(-0.075, -0.365);
+      c.lineTo(-0.035, -0.335);
+      c.lineTo(-0.01, -0.39);
+      c.lineTo(0.02, -0.335);
+      c.lineTo(0.055, -0.36);
+      c.lineTo(0.045, -0.285);
+    },
+    lin(c, 0, -0.39, 0, -0.28, [[0, "#fff2a8"], [1, FIN]]),
+    D,
+    0.008
+  );
+
+  // Upright S-curved seahorse body + trumpet snout + curled prehensile tail
+  fillStroke(
+    c,
+    () => {
+      c.moveTo(-0.08, -0.26);
+      c.bezierCurveTo(-0.035, -0.325, 0.055, -0.315, 0.072, -0.255);
+      // Trumpet snout
+      c.lineTo(0.215, -0.235);
+      c.lineTo(0.215, -0.195 + p.open * 0.035);
+      c.lineTo(0.08, -0.205);
+      // Neck & proud belly chest
+      c.bezierCurveTo(0.04, -0.15, 0.115, -0.06, 0.095, 0.045);
+      c.bezierCurveTo(0.075, 0.135, 0.005, 0.195, -0.01, 0.285);
+      // Curled spiral tail
+      c.bezierCurveTo(-0.02, 0.365, 0.08, 0.385, 0.095, 0.315);
+      c.bezierCurveTo(0.105, 0.27, 0.055, 0.25, 0.04, 0.285);
+      c.bezierCurveTo(0.025, 0.325, -0.055, 0.34, -0.065, 0.245);
+      // Back spine curve up to head
+      c.bezierCurveTo(-0.08, 0.145, -0.085, 0.04, -0.078, -0.08);
+      c.bezierCurveTo(-0.072, -0.16, -0.105, -0.21, -0.08, -0.26);
+    },
+    lin(c, -0.08, -0.32, 0.08, 0.34, [[0, FIN], [0.25, B], [0.68, D], [1, mix(D, FIN, 0.4)]]),
+    D,
+    0.012,
+    () => {
+      // Creamy golden front chest highlight & segmented body rings
+      c.fillStyle = rgba(BEL, 0.52);
+      c.fillRect(0.015, -0.2, 0.1, 0.38);
+      c.strokeStyle = rgba(FIN, 0.55);
+      c.lineWidth = 0.011;
+      for (let ry = -0.15; ry < 0.28; ry += 0.055) {
+        c.beginPath();
+        c.moveTo(-0.09, ry);
+        c.quadraticCurveTo(0.0, ry + 0.018, 0.1, ry - 0.005);
+        c.stroke();
+      }
+    }
+  );
+
+  // Tiny ear fin behind cheek
+  c.save();
+  c.translate(0.005, -0.215);
+  c.rotate(buzz * 0.7);
+  fillStroke(
+    c,
+    () => {
+      c.moveTo(0, -0.01);
+      c.bezierCurveTo(-0.032, -0.038, -0.068, -0.024, -0.068, 0);
+      c.bezierCurveTo(-0.068, 0.024, -0.032, 0.036, 0, 0.01);
+    },
+    rgba(FIN, 0.85),
+    D,
+    0.008
+  );
+  c.restore();
+
+  eye(c, 0.055, -0.262, 0.034, {
+    iris: pal.iris || "#1d3557",
+    expr: p.expr,
+    ol: D,
+    sx: 0.95,
+    look: 0.22,
+    happyCol: "#4a1228",
+  });
+  c.restore();
+}
+
+function drawNudibranch(c: Ctx, sp: Species, p: Pose) {
+  const pal = sp.pal;
+  const BLUE = pal.body || "#1888ff";
+  const PURP = pal.dark || "#7c22e8";
+  const CYAN = pal.belly || "#38d8ff";
+  const ORANGE = pal.fin || "#ff6e14";
+  const SPOT = pal.spot || "#b44cff";
+  const wave = Math.sin((p.phase ?? 0)) * 0.022;
+
+  // Rear feathery orange gill plume crown
+  for (let i = -2; i <= 2; i++) {
+    c.save();
+    c.translate(-0.155, -0.085);
+    c.rotate(i * 0.28 + wave * 2.5);
+    fillStroke(
+      c,
+      () => {
+        c.moveTo(-0.014, 0);
+        c.quadraticCurveTo(-0.018, -0.075, 0, -0.105);
+        c.quadraticCurveTo(0.018, -0.075, 0.014, 0);
+      },
+      lin(c, 0, 0, 0, -0.1, [[0, PURP], [0.5, ORANGE], [1, "#ffe14a"]]),
+      PURP,
+      0.008
+    );
+    c.restore();
+  }
+
+  // Twin curved glowing rhinophores on head
+  for (const dx of [0.16, 0.2]) {
+    c.save();
+    c.translate(dx, -0.075);
+    c.rotate(0.28 + wave * 2);
+    fillStroke(
+      c,
+      () => {
+        c.moveTo(-0.014, 0);
+        c.quadraticCurveTo(0.01, -0.07, 0.025, -0.11);
+        c.quadraticCurveTo(0.034, -0.06, 0.015, 0);
+      },
+      lin(c, 0, 0, 0.02, -0.11, [[0, BLUE], [0.55, PURP], [1, ORANGE]]),
+      PURP,
+      0.008
+    );
+    c.restore();
+  }
+
+  // Sleek rainbow sea slug body
+  fillStroke(
+    c,
+    () => {
+      c.moveTo(-0.32, 0.062);
+      c.bezierCurveTo(-0.22, -0.06, -0.06, -0.135, 0.08, -0.132);
+      c.bezierCurveTo(0.19, -0.128, 0.275, -0.065, 0.305, 0.035);
+      c.lineTo(0.285, 0.072 + p.open * 0.035);
+      c.bezierCurveTo(0.18, 0.095, 0.0, 0.1, -0.18, 0.092);
+      c.quadraticCurveTo(-0.26, 0.085, -0.32, 0.062);
+    },
+    lin(c, -0.28, -0.12, 0.24, 0.08, [[0, ORANGE], [0.28, PURP], [0.64, BLUE], [0.92, CYAN]]),
+    PURP,
+    0.012,
+    () => {
+      // Glowing neon dorsal orange-gold crest stripe & speckles
+      c.strokeStyle = ORANGE;
+      c.lineWidth = 0.026;
+      c.beginPath();
+      c.moveTo(-0.24, 0.02);
+      c.quadraticCurveTo(0, -0.11, 0.24, 0.03);
+      c.stroke();
+      for (const [sx, sy, sr, col] of [
+        [-0.14, -0.02, 0.018, "#ffe14a"],
+        [-0.03, -0.04, 0.022, SPOT],
+        [0.08, -0.03, 0.018, ORANGE],
+        [-0.08, 0.03, 0.016, CYAN],
+        [0.05, 0.035, 0.017, ORANGE],
+      ] as [number, number, number, string][]) {
+        c.fillStyle = col;
+        blob(c, sx, sy, sr, sr);
+      }
+    }
+  );
+
+  // Ruffled undulating neon skirt hem along bottom flank
+  fillStroke(
+    c,
+    () => {
+      c.moveTo(-0.28, 0.068);
+      c.bezierCurveTo(-0.18, 0.115 + wave, -0.08, 0.078 - wave, 0.02, 0.118 + wave);
+      c.bezierCurveTo(0.11, 0.08 - wave, 0.2, 0.112 + wave, 0.26, 0.068);
+      c.lineTo(0.24, 0.048);
+      c.lineTo(-0.26, 0.048);
+    },
+    lin(c, -0.26, 0.06, 0.24, 0.1, [[0, ORANGE], [0.5, PURP], [1, CYAN]]),
+    PURP,
+    0.008
+  );
+
+  eye(c, 0.22, -0.006, 0.031, {
+    iris: pal.iris || "#ffe14a",
+    expr: p.expr,
+    ol: PURP,
+    sx: 0.95,
+    look: 0.24,
+    happyCol: "#ff8c1a",
+  });
+}
+
 export function renderCustomFish(sp: Species, W: number, jawState: number, tailFrame: number, tailFrames: number, expr: Expr): HTMLCanvasElement {
   const st = sp.style as CustomStyle;
   const H = Math.max(20, Math.round(W * ASPECT[st]));
@@ -9269,6 +9607,9 @@ export function renderCustomFish(sp: Species, W: number, jawState: number, tailF
   else if (st === "snapper") drawSnapper(c, sp, pose);
   else if (st === "lumba") drawLumba(c, sp, pose);
   else if (st === "snapturtle") drawSnapturtle(c, sp, pose);
+  else if (st === "boxfish") drawBoxfish(c, sp, pose);
+  else if (st === "seahorse") drawSeahorse(c, sp, pose);
+  else if (st === "nudibranch") drawNudibranch(c, sp, pose);
   else drawLeopard(c, sp, pose);
   return cv;
 }

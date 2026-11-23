@@ -3299,8 +3299,9 @@ class Fish3DService {
 
   private snapshotCamZ(sp: Species): number {
     if (sp.style === "orca" || sp.style === "whaleshark" || sp.style === "narwhal") return 1.56;
+    if (sp.style === "seahorse") return 1.48;
     if (sp.style === "eddy" || sp.style === "layla" || sp.style === "snapturtle" || sp.style === "seadragon") return 1.44;
-    if (sp.style === "andy" || sp.style === "boris" || sp.style === "butterfly" || sp.style === "leon") return 1.38;
+    if (sp.style === "andy" || sp.style === "boris" || sp.style === "butterfly" || sp.style === "leon" || sp.style === "nudibranch") return 1.38;
     return 1.32;
   }
 

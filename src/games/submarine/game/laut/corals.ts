@@ -246,3 +246,73 @@ export function goldenKelp(seed = 1) {
   parts.push({ g: bulb, aux: 1 });
   return finish(mergeAux(parts));
 }
+
+/** short lush seagrass & turf algae carpet blades that sway over upper rock backs */
+export function turfAlgae(seed = 1) {
+  const parts: { g: THREE.BufferGeometry; aux?: number | ((x: number, y: number, z: number) => number) }[] = [];
+  const blades = 18;
+  for (let i = 0; i < blades; i++) {
+    const a = i * 2.39996 + seed * 0.7;
+    const rad = Math.sqrt((i + 0.4) / blades) * 0.56;
+    const bx = Math.cos(a) * rad;
+    const bz = Math.sin(a) * rad * 0.78;
+    const h = 0.58 + 0.42 * Math.abs(Math.sin(i * 1.9 + seed));
+    const w = 0.08 + 0.03 * Math.cos(i * 2.7);
+    const blade = new THREE.PlaneGeometry(w, h, 1, 5);
+    const bp = blade.getAttribute("position") as THREE.BufferAttribute;
+    const leanX = Math.cos(a) * (0.18 + 0.16 * rad);
+    const leanZ = Math.sin(a) * (0.14 + 0.12 * rad);
+    for (let v = 0; v < bp.count; v++) {
+      const u = clamp01(bp.getY(v) / h + 0.5);
+      const taper = 1 - Math.pow(u, 1.45) * 0.92;
+      const arch = u * u;
+      bp.setXYZ(
+        v,
+        bx + bp.getX(v) * taper + leanX * arch + Math.sin(u * 5.2 + i) * 0.025 * u,
+        u * h,
+        bz + leanZ * arch + Math.cos(u * 4.1 + i) * 0.02 * u,
+      );
+    }
+    blade.deleteAttribute("uv");
+    blade.computeVertexNormals();
+    parts.push({ g: blade, aux: (_x, y) => Math.min(1, y / h) });
+  }
+  return finish(mergeAux(parts));
+}
+
+function clamp01(v: number) {
+  return v < 0 ? 0 : v > 1 ? 1 : v;
+}
+
+/** pleated calcified mermaid's-fan algae (Padina / Udotea) with wavy concentric fans */
+export function fanAlgae(seed = 1) {
+  const parts: { g: THREE.BufferGeometry; aux?: number | ((x: number, y: number, z: number) => number) }[] = [];
+  const fans = 5;
+  for (let i = 0; i < fans; i++) {
+    const yaw = (i / fans) * Math.PI * 2 + seed * 0.43 + Math.sin(i * 2.1) * 0.35;
+    const h = 0.74 + 0.26 * Math.abs(Math.cos(i * 1.7 + seed));
+    const tilt = 0.24 + (i % 3) * 0.14;
+    const g = new THREE.PlaneGeometry(1, 1, 7, 5);
+    const gp = g.getAttribute("position") as THREE.BufferAttribute;
+    for (let v = 0; v < gp.count; v++) {
+      const u = gp.getX(v); // -0.5 .. 0.5 across fan
+      const t = gp.getY(v) + 0.5; // 0 stem .. 1 outer fan rim
+      const spread = 0.1 + 0.85 * Math.pow(t, 0.72);
+      const ang = u * 1.65;
+      const rad = 0.14 + t * h;
+      const pleat = Math.sin(u * 14.0 + i) * 0.045 * t * t;
+      const cup = Math.cos(ang * 1.1) * 0.09 * t;
+      const lx = Math.sin(ang) * rad * spread;
+      const ly = Math.cos(ang * 0.55) * rad * 0.92;
+      const lz = cup + pleat + t * tilt * 0.35;
+      gp.setXYZ(v, lx, ly, lz);
+    }
+    g.deleteAttribute("uv");
+    g.computeVertexNormals();
+    g.rotateY(yaw);
+    g.translate(Math.cos(yaw) * 0.09, 0, -Math.sin(yaw) * 0.09);
+    parts.push({ g, aux: (_x, y) => Math.min(1, y / Math.max(0.35, h)) });
+  }
+  return finish(mergeAux(parts));
+}
+

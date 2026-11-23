@@ -5432,6 +5432,1008 @@ function createSnapper3DRig(sp: Species, maxAnisotropy: number): Fish3DRig {
 }
 
 // =====================================================================================
+// 11. BOXFISH KUNING (Boxfish — Adorable Cube-Shaped Yellow Polka-Dot Reef Fish)
+// =====================================================================================
+function createBoxfish3DRig(sp: Species, maxAnisotropy: number): Fish3DRig {
+  const pal = sp.pal;
+  const B = pal.body || "#ffd826";
+  const D = pal.dark || "#c78506";
+  const BEL = pal.belly || "#fff5b8";
+  const FIN = pal.fin || "#ffe978";
+  const SPOT = pal.spot || "#1c1510";
+
+  const ctx = createRigContext(D, "#4d4d4d");
+  const { track, uniforms, makeFishMat } = ctx;
+  const { root, pitchGroup, yawGroup, bodyGroup } = baseGroups();
+
+  const xTail = -0.22;
+  const xSnout = 0.252;
+  const hx = 0.224;
+  const hy = -0.024;
+  const tipY = -0.022;
+
+  // Rounded-corner dice/cube boxfish contour
+  const topPts = sortAscX(
+    sampleBezierChain(
+      [
+        [
+          [xTail, 0.038],
+          [-0.195, 0.165],
+          [-0.135, 0.205],
+          [0.01, 0.205],
+        ],
+        [
+          [0.01, 0.205],
+          [0.145, 0.205],
+          [0.215, 0.165],
+          [xSnout, tipY + 0.008],
+        ],
+      ],
+      24
+    )
+  );
+  const botPts = sortAscX(
+    sampleBezierChain(
+      [
+        [
+          [xTail, -0.038],
+          [-0.195, -0.175],
+          [-0.135, -0.208],
+          [0.01, -0.208],
+        ],
+        [
+          [0.01, -0.208],
+          [0.148, -0.208],
+          [0.22, -0.17],
+          [xSnout - 0.003, tipY - 0.01],
+        ],
+      ],
+      24
+    )
+  );
+
+  const evalTop = (x: number) => interpCurveY(topPts, x);
+  const evalBot = (x: number) => interpCurveY(botPts, x);
+  const evalZ = (x: number, t: number) => {
+    const u = clamp(t, 0, 1);
+    const boxEnvelope = Math.pow(Math.sin(Math.pow(u, 0.72) * Math.PI), 0.36);
+    const base = 0.028 + 0.158 * boxEnvelope;
+    if (x > 0.21) {
+      const n = clamp((x - 0.21) / (xSnout - 0.21), 0, 1);
+      return base * Math.sqrt(Math.max(0.01, 1 - n * n * 0.94));
+    }
+    return base;
+  };
+
+  const { mapUV, beginCanvas2D } = createWorldMapper(-0.26, 0.28, -0.24, 0.24, 512);
+  const bodyCv = document.createElement("canvas");
+  bodyCv.width = 512;
+  bodyCv.height = 512;
+  const bc = bodyCv.getContext("2d")!;
+  beginCanvas2D(bc, 0, 0);
+
+  bc.fillStyle = makeLin(bc, 0, -0.21, 0, 0.21, [
+    [0, mixHex(D, B, 0.45)],
+    [0.22, B],
+    [0.68, B],
+    [1, mixHex(BEL, B, 0.45)],
+  ]);
+  bc.fillRect(-0.32, -0.28, 0.68, 0.56);
+
+  // Subtle hexagonal carapace plate lines
+  bc.strokeStyle = rgbaHex(D, 0.24);
+  bc.lineWidth = 0.0045;
+  for (const gx of [-0.1, -0.01, 0.08]) {
+    bc.beginPath();
+    bc.moveTo(gx, -0.2);
+    bc.quadraticCurveTo(gx - 0.02, 0, gx + 0.01, 0.2);
+    bc.stroke();
+  }
+
+  // Adorable black polka-dots rimmed in golden halo
+  const dots: [number, number, number][] = [
+    [-0.155, -0.095, 0.018],
+    [-0.085, -0.135, 0.022],
+    [0.01, -0.145, 0.020],
+    [0.095, -0.125, 0.017],
+    [-0.145, 0.01, 0.023],
+    [-0.06, -0.025, 0.025],
+    [0.035, -0.03, 0.022],
+    [-0.125, 0.115, 0.019],
+    [-0.025, 0.105, 0.024],
+    [0.065, 0.125, 0.018],
+    [0.145, 0.11, 0.015],
+    [-0.185, -0.01, 0.014],
+  ];
+  for (const [dx, dy, dr] of dots) {
+    bc.fillStyle = rgbaHex(BEL, 0.45);
+    bc.beginPath();
+    bc.arc(dx, dy, dr * 1.24, 0, Math.PI * 2);
+    bc.fill();
+    bc.fillStyle = SPOT;
+    bc.beginPath();
+    bc.arc(dx, dy, dr, 0, Math.PI * 2);
+    bc.fill();
+  }
+
+  // Soft rosy coral cheek blush
+  drawGlow(bc, 0.145, 0.065, 0.034, 0.022, 0, "255,120,120", 0.36);
+
+  // Cute pouting mouth corner crease
+  bc.strokeStyle = rgbaHex(D, 0.65);
+  bc.lineWidth = 0.005;
+  bc.lineCap = "round";
+  bc.beginPath();
+  bc.moveTo(xSnout - 0.004, -tipY);
+  bc.quadraticCurveTo(hx + 0.012, -hy + 0.004, hx, -hy);
+  bc.stroke();
+  bc.restore();
+
+  const bodyTex = track(new THREE.CanvasTexture(bodyCv));
+  bodyTex.colorSpace = THREE.SRGBColorSpace;
+  bodyTex.anisotropy = maxAnisotropy;
+
+  const evalSeamY = (x: number) => {
+    const u = clamp((x - hx) / (xSnout - hx), 0, 1);
+    return hy + u * (tipY - hy);
+  };
+  const { bodyGeo, lowerJawGeo } = buildSlicedHeadBody({
+    xStart: xTail,
+    xHinge: hx,
+    xEnd: xSnout,
+    xLowerEnd: xSnout - 0.003,
+    jawY: hy,
+    evalTopY: evalTop,
+    evalBotY: evalBot,
+    evalSeamY,
+    evalHalfZ: (x) => evalZ(x, clamp((x - xTail) / (xSnout - xTail), 0, 1)),
+    mapUV,
+    uSteps: 48,
+    vSteps: 28,
+    rearBulge: 0.008,
+  });
+  track(bodyGeo);
+  track(lowerJawGeo);
+
+  const bodyMat = makeFishMat(bodyTex, { roughness: 0.72, emissiveIntensity: 0.16 });
+  injectSpineShader(bodyMat, uniforms, 0, 0);
+  bodyGroup.add(new THREE.Mesh(bodyGeo, bodyMat));
+
+  const upperJawGroup = new THREE.Group();
+  upperJawGroup.position.set(hx, hy, 0);
+  bodyGroup.add(upperJawGroup);
+
+  const lowerJawGroup = new THREE.Group();
+  lowerJawGroup.position.set(hx, hy, 0);
+  bodyGroup.add(lowerJawGroup);
+  const jawMat = makeFishMat(bodyTex, { roughness: 0.72, emissiveIntensity: 0.16 });
+  injectSpineShader(jawMat, uniforms, hx, hy);
+  lowerJawGroup.add(new THREE.Mesh(lowerJawGeo, jawMat));
+
+  const { mouthInterior, tongueMesh } = createOralParts(ctx, bodyGroup, lowerJawGroup, hx, hy, "#521224", "#ff7c94", [0.028, 0.024, 0.022], [0.02, 0.009, 0.014], 0.022);
+
+  // Cute tiny translucent yellow dorsal & anal fins + fanned paddle tail
+  const dorsalShape = new THREE.Shape();
+  dorsalShape.moveTo(-0.08, 0.19);
+  dorsalShape.bezierCurveTo(-0.095, 0.265, -0.155, 0.275, -0.175, 0.235);
+  dorsalShape.bezierCurveTo(-0.185, 0.205, -0.165, 0.175, -0.14, 0.165);
+  dorsalShape.closePath();
+  const dorsalFin = makeSpineFinMesh(
+    ctx,
+    dorsalShape,
+    0,
+    0,
+    0.003,
+    0.0008,
+    (fc) => {
+      fc.fillStyle = makeLin(fc, -0.12, 0.17, -0.14, 0.27, [
+        [0, rgbaHex(B, 0.9)],
+        [1, rgbaHex(FIN, 0.65)],
+      ]);
+      fc.fillRect(-0.25, 0.1, 0.2, 0.25);
+    },
+    maxAnisotropy,
+    true,
+    0,
+    { transparent: true, opacity: 0.86 }
+  ).mesh;
+  bodyGroup.add(dorsalFin);
+
+  const analShape = new THREE.Shape();
+  analShape.moveTo(-0.08, -0.19);
+  analShape.bezierCurveTo(-0.095, -0.26, -0.15, -0.268, -0.17, -0.228);
+  analShape.bezierCurveTo(-0.18, -0.2, -0.16, -0.175, -0.14, -0.168);
+  analShape.closePath();
+  const analFin = makeSpineFinMesh(
+    ctx,
+    analShape,
+    0,
+    0,
+    0.003,
+    0.0008,
+    (fc) => {
+      fc.fillStyle = makeLin(fc, -0.12, -0.17, -0.14, -0.26, [
+        [0, rgbaHex(B, 0.9)],
+        [1, rgbaHex(FIN, 0.65)],
+      ]);
+      fc.fillRect(-0.25, -0.32, 0.2, 0.25);
+    },
+    maxAnisotropy,
+    true,
+    0,
+    { transparent: true, opacity: 0.86 }
+  ).mesh;
+  bodyGroup.add(analFin);
+
+  const tailPivot = new THREE.Group();
+  tailPivot.position.set(xTail + 0.006, 0, 0);
+  bodyGroup.add(tailPivot);
+  const tailShape = new THREE.Shape();
+  tailShape.moveTo(0.01, 0.032);
+  tailShape.bezierCurveTo(-0.045, 0.095, -0.115, 0.11, -0.132, 0.055);
+  tailShape.bezierCurveTo(-0.145, 0.015, -0.145, -0.015, -0.132, -0.055);
+  tailShape.bezierCurveTo(-0.115, -0.11, -0.045, -0.095, 0.01, -0.032);
+  tailShape.closePath();
+  const tailFin = makeSpineFinMesh(
+    ctx,
+    tailShape,
+    0,
+    0,
+    0.0034,
+    0.0009,
+    (fc) => {
+      fc.fillStyle = makeLin(fc, 0, 0, -0.14, 0, [
+        [0, B],
+        [0.55, FIN],
+        [1, rgbaHex(BEL, 0.8)],
+      ]);
+      fc.fillRect(-0.2, -0.16, 0.25, 0.32);
+      drawFinRays(fc, [0, 0], [[-0.125, 0.06], [-0.135, 0.02], [-0.135, -0.02], [-0.125, -0.06]], rgbaHex(D, 0.35), 0.003);
+    },
+    maxAnisotropy,
+    false,
+    0,
+    { transparent: true, opacity: 0.9 }
+  ).mesh;
+  tailPivot.add(tailFin);
+
+  // Rapid-fluttering tiny translucent pectoral fins on boxy cheeks
+  const pecShape = new THREE.Shape();
+  pecShape.moveTo(0, 0.012);
+  pecShape.bezierCurveTo(-0.032, 0.048, -0.075, 0.036, -0.078, -0.002);
+  pecShape.bezierCurveTo(-0.075, -0.038, -0.03, -0.044, 0, -0.012);
+  pecShape.closePath();
+  const pecObj = makeSpineFinMesh(
+    ctx,
+    pecShape,
+    0.068,
+    -0.012,
+    0.0025,
+    0.0006,
+    (fc) => {
+      fc.fillStyle = makeLin(fc, 0, 0, -0.08, 0, [
+        [0, rgbaHex(B, 0.85)],
+        [1, rgbaHex(BEL, 0.55)],
+      ]);
+      fc.fillRect(-0.12, -0.08, 0.16, 0.16);
+    },
+    maxAnisotropy,
+    false,
+    0,
+    { transparent: true, opacity: 0.78 }
+  ).mesh;
+  const pecZ = surfaceZAt(evalTop, evalBot, (x) => evalZ(x, clamp((x - xTail) / (xSnout - xTail), 0, 1)), 0.068, -0.012) + 0.006;
+  const pecLeft = new THREE.Group();
+  pecLeft.position.set(0.068, -0.012, pecZ);
+  pecLeft.add(pecObj);
+  const pecRight = new THREE.Group();
+  pecRight.position.set(0.068, -0.012, -pecZ);
+  pecRight.add(pecObj.clone());
+  bodyGroup.add(pecLeft, pecRight);
+
+  const pelvicFin = new THREE.Group();
+  bodyGroup.add(pelvicFin);
+
+  const boxEz = computeEyeZ(evalTop, evalBot, (x) => evalZ(x, clamp((x - xTail) / (xSnout - xTail), 0, 1)), 0.156, 0.068, 0.048);
+  const { eyesNormal, eyesPupil, eyesHappy } = createEyePair(ctx, bodyGroup, {
+    ex: 0.156,
+    ey: 0.068,
+    ez: boxEz,
+    er: 0.048,
+    sx: 0.94,
+    sy: 1.0,
+    yawRot: 0.22,
+    irisColor: pal.iris || "#182b4d",
+    rimColor: D,
+    happyColor: "#3d2502",
+  });
+
+  const { biteRing, biteRingMat } = createBiteRing(ctx, bodyGroup, xSnout + 0.02, tipY, "#fff2a8", 0.046);
+
+  return {
+    speciesKey: sp.id,
+    tailPivotX: xTail + 0.006,
+    skipDefaultFins: true,
+    root,
+    pitchGroup,
+    yawGroup,
+    bodyGroup,
+    upperJawGroup,
+    lowerJawGroup,
+    mouthInterior,
+    tongueMesh,
+    tailPivot,
+    pecLeft,
+    pecRight,
+    pelvicFin,
+    eyesNormal,
+    eyesPupil,
+    eyesHappy,
+    biteRing,
+    biteRingMat,
+    uniforms,
+    onCustomPose: (p, open) => {
+      // Keep boxy carapace crisp and cube-like while fluttering tiny fins super fast!
+      uniforms.uSwimAmp.value *= 0.28;
+      const fastFlutter = p.wag2 * (p.sucking ? 3.2 : 2.35);
+      pecLeft.rotation.y = 0.42 + Math.sin(fastFlutter) * 0.42;
+      pecLeft.rotation.z = Math.cos(fastFlutter) * 0.24;
+      pecRight.rotation.y = -0.42 - Math.sin(fastFlutter + 0.6) * 0.42;
+      pecRight.rotation.z = Math.cos(fastFlutter + 0.6) * 0.24;
+      dorsalFin.rotation.y = Math.sin(fastFlutter * 1.1) * 0.24;
+      analFin.rotation.y = -Math.sin(fastFlutter * 1.1) * 0.22;
+      tailPivot.rotation.y = -Math.sin(fastFlutter * 0.85) * 0.46;
+
+      const tightClamp = p.jaw < 0 ? clamp(-p.jaw, 0, 0.35) : 0;
+      lowerJawGroup.rotation.z = -open * 0.78 + tightClamp * 0.16;
+      const hasMouth = open > 0.03;
+      mouthInterior.visible = hasMouth;
+      if (hasMouth) {
+        mouthInterior.rotation.z = -open * 0.24;
+        mouthInterior.scale.set(0.84 + open * 0.16, 0.28 + open * 0.85, 0.56 + open * 0.14);
+      }
+      tongueMesh.visible = open > 0.045;
+      tongueMesh.position.y = -0.002 + open * 0.005;
+    },
+    dispose: () => {
+      for (const d of ctx.disposables) d.dispose();
+    },
+  };
+}
+
+// =====================================================================================
+// 12. KUDA LAUT MAHKOTA (Seahorse — Graceful Upright S-Curve, Crowned Head & Curled Tail)
+// =====================================================================================
+function createSeahorse3DRig(sp: Species, maxAnisotropy: number): Fish3DRig {
+  const pal = sp.pal;
+  const B = pal.body || "#ff8c9e";
+  const D = pal.dark || "#d6456e";
+  const BEL = pal.belly || "#ffe49e";
+  const FIN = pal.fin || "#ffd15c";
+  const STR = pal.stripe || "#ffdf6b";
+
+  const ctx = createRigContext(D, "#4d4d4d");
+  const { track, uniforms, makeFishMat } = ctx;
+  const { root, pitchGroup, yawGroup, bodyGroup } = baseGroups();
+
+  // Paint upright ribbed gold & sakura-coral seahorse skin texture
+  const bodyCv = document.createElement("canvas");
+  bodyCv.width = 256;
+  bodyCv.height = 512;
+  const bc = bodyCv.getContext("2d")!;
+  bc.fillStyle = makeLin(bc, 0, 0, 256, 512, [
+    [0, FIN],
+    [0.25, B],
+    [0.65, D],
+    [1, mixHex(D, FIN, 0.35)],
+  ]);
+  bc.fillRect(0, 0, 256, 512);
+  // Creamy golden chest/belly highlight along front (v along cross-section)
+  const bellyG = bc.createLinearGradient(0, 0, 256, 0);
+  bellyG.addColorStop(0, BEL);
+  bellyG.addColorStop(0.32, rgbaHex(BEL, 0.5));
+  bellyG.addColorStop(0.65, "rgba(255,255,255,0)");
+  bellyG.addColorStop(1, rgbaHex(D, 0.45));
+  bc.fillStyle = bellyG;
+  bc.fillRect(0, 0, 256, 512);
+  // Signature bony seahorse body rings
+  bc.strokeStyle = rgbaHex(STR, 0.55);
+  bc.lineWidth = 5;
+  for (let y = 26; y < 492; y += 26) {
+    bc.beginPath();
+    bc.moveTo(0, y);
+    bc.quadraticCurveTo(128, y + 8, 256, y);
+    bc.stroke();
+  }
+  const bodyTex = track(new THREE.CanvasTexture(bodyCv));
+  bodyTex.colorSpace = THREE.SRGBColorSpace;
+  bodyTex.anisotropy = maxAnisotropy;
+
+  // Build custom ringed S-curved seahorse torso + head + tubular snout (x forward, y upright)
+  // Spine stations: [x, y, rx (fore-aft thickness), rz (lateral thickness)]
+  const spine: [number, number, number, number][] = [
+    [-0.085, 0.255, 0.048, 0.036], // back of head
+    [-0.025, 0.285, 0.066, 0.052], // domed skull
+    [0.038, 0.252, 0.072, 0.056], // cheek & forehead
+    [0.022, 0.175, 0.050, 0.042], // slender arched neck
+    [-0.010, 0.105, 0.062, 0.048], // upper chest
+    [0.015, 0.020, 0.088, 0.062], // proud rounded belly
+    [-0.015, -0.072, 0.074, 0.052], // lower belly
+    [-0.048, -0.152, 0.048, 0.038], // waist taper
+    [-0.052, -0.228, 0.034, 0.028], // upper tail
+    [-0.020, -0.292, 0.024, 0.020], // lower tail sweep
+    [0.032, -0.324, 0.019, 0.016], // curl bottom
+    [0.074, -0.292, 0.015, 0.013], // curl forward-up
+    [0.062, -0.246, 0.011, 0.010], // curl inward
+    [0.028, -0.256, 0.008, 0.007], // inner spiral tip
+  ];
+
+  // Build smooth lofted ring tube along spine
+  const radialSegs = 22;
+  const positions: number[] = [];
+  const uvs: number[] = [];
+  const indices: number[] = [];
+  for (let i = 0; i < spine.length; i++) {
+    const prev = spine[Math.max(0, i - 1)];
+    const next = spine[Math.min(spine.length - 1, i + 1)];
+    let tx = next[0] - prev[0];
+    let ty = next[1] - prev[1];
+    const tlen = Math.hypot(tx, ty) || 1;
+    tx /= tlen;
+    ty /= tlen;
+    // Normal in XY plane pointing forward (+x roughly)
+    const nx = -ty;
+    const ny = tx;
+    const [cx, cy, rx, rz] = spine[i];
+    const vCoord = i / (spine.length - 1);
+    for (let j = 0; j <= radialSegs; j++) {
+      const a = (j / radialSegs) * Math.PI * 2;
+      const ca = Math.cos(a);
+      const sa = Math.sin(a);
+      // Slight belly rib ridges along rings
+      const ridge = 1 + 0.06 * Math.sin(vCoord * Math.PI * 22);
+      const px = cx + nx * ca * rx * ridge;
+      const py = cy + ny * ca * rx * ridge;
+      const pz = sa * rz * ridge;
+      positions.push(px, py, pz);
+      uvs.push(Math.abs(ca * 0.5 + 0.5), vCoord);
+    }
+  }
+  const stride = radialSegs + 1;
+  for (let i = 0; i < spine.length - 1; i++) {
+    for (let j = 0; j < radialSegs; j++) {
+      const a = i * stride + j;
+      const b = a + stride;
+      indices.push(a, b, a + 1, a + 1, b, b + 1);
+    }
+  }
+  const torsoGeo = track(new THREE.BufferGeometry());
+  torsoGeo.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  torsoGeo.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
+  torsoGeo.setIndex(indices);
+  torsoGeo.computeVertexNormals();
+
+  const bodyMat = makeFishMat(bodyTex, { roughness: 0.55, emissiveIntensity: 0.18 });
+  bodyGroup.add(new THREE.Mesh(torsoGeo, bodyMat));
+
+  // Signature trumpet snout extending from cheek (0.08, 0.235) out to (0.215, 0.215)
+  const snoutGeo = track(new THREE.CylinderGeometry(0.022, 0.036, 0.145, 16));
+  snoutGeo.rotateZ(-Math.PI / 2 - 0.14);
+  snoutGeo.translate(0.145, 0.228, 0);
+  const snoutMat = track(
+    new THREE.MeshStandardMaterial({
+      color: mixHex(B, BEL, 0.3),
+      emissive: B,
+      emissiveIntensity: 0.15,
+      roughness: 0.52,
+    })
+  );
+  bodyGroup.add(new THREE.Mesh(snoutGeo, snoutMat));
+
+  // Royal 5-point golden coronet crown on top of head
+  const crownGroup = new THREE.Group();
+  crownGroup.position.set(-0.015, 0.31, 0);
+  const crownMat = track(
+    new THREE.MeshStandardMaterial({
+      color: FIN,
+      emissive: FIN,
+      emissiveIntensity: 0.28,
+      roughness: 0.35,
+      metalness: 0.18,
+    })
+  );
+  for (let i = 0; i < 5; i++) {
+    const a = -0.58 + i * 0.29;
+    const h = i === 2 ? 0.068 : i === 1 || i === 3 ? 0.056 : 0.044;
+    const spike = track(new THREE.ConeGeometry(0.015, h, 8));
+    spike.rotateZ(-a);
+    spike.translate(Math.sin(a) * 0.026, h * 0.4, 0);
+    crownGroup.add(new THREE.Mesh(spike, crownMat));
+    const pearl = track(new THREE.SphereGeometry(0.011, 8, 6));
+    pearl.translate(Math.sin(a) * (0.026 + h * 0.72), h * 0.85, 0);
+    crownGroup.add(new THREE.Mesh(pearl, crownMat));
+  }
+  bodyGroup.add(crownGroup);
+
+  // Articulated flared trumpet mouth rim (snout tip)
+  const hx = 0.21;
+  const hy = 0.215;
+  const upperJawGroup = new THREE.Group();
+  upperJawGroup.position.set(hx, hy, 0);
+  const uRim = track(new THREE.TorusGeometry(0.021, 0.008, 8, 14));
+  uRim.rotateY(Math.PI / 2);
+  upperJawGroup.add(new THREE.Mesh(uRim, crownMat));
+  bodyGroup.add(upperJawGroup);
+
+  const lowerJawGroup = new THREE.Group();
+  lowerJawGroup.position.set(hx - 0.005, hy - 0.008, 0);
+  const lLip = track(new THREE.SphereGeometry(0.016, 10, 8));
+  lLip.scale(1.2, 0.65, 0.9);
+  lLip.translate(0.012, -0.004, 0);
+  lowerJawGroup.add(new THREE.Mesh(lLip, crownMat));
+  bodyGroup.add(lowerJawGroup);
+
+  const { mouthInterior, tongueMesh } = createOralParts(ctx, bodyGroup, lowerJawGroup, hx, hy, "#5c1428", "#ff8da8", [0.018, 0.016, 0.014], [0.012, 0.006, 0.009], 0.01);
+
+  // Rapidly fluttering translucent golden-pink dorsal wing fin on back
+  const dorsalShape = new THREE.Shape();
+  dorsalShape.moveTo(0, 0.068);
+  dorsalShape.bezierCurveTo(-0.075, 0.088, -0.145, 0.055, -0.148, 0.0);
+  dorsalShape.bezierCurveTo(-0.145, -0.055, -0.075, -0.085, 0, -0.062);
+  dorsalShape.closePath();
+  const dorsalPivot = new THREE.Group();
+  dorsalPivot.position.set(-0.072, 0.018, 0);
+  const dorsalMesh = makeSpineFinMesh(
+    ctx,
+    dorsalShape,
+    0,
+    0,
+    0.0028,
+    0.0007,
+    (fc) => {
+      fc.fillStyle = makeLin(fc, 0, 0, -0.15, 0, [
+        [0, rgbaHex(B, 0.9)],
+        [0.55, rgbaHex(FIN, 0.8)],
+        [1, rgbaHex(BEL, 0.65)],
+      ]);
+      fc.fillRect(-0.2, -0.12, 0.25, 0.24);
+      drawFinRays(fc, [0, 0], [[-0.13, 0.05], [-0.14, 0.018], [-0.14, -0.018], [-0.13, -0.05]], rgbaHex(D, 0.35), 0.003);
+    },
+    maxAnisotropy,
+    false,
+    0,
+    { transparent: true, opacity: 0.85 }
+  ).mesh;
+  dorsalPivot.add(dorsalMesh);
+  bodyGroup.add(dorsalPivot);
+
+  // Tiny ear-like pectoral fins behind cheek
+  const earShape = new THREE.Shape();
+  earShape.moveTo(0, 0.01);
+  earShape.bezierCurveTo(-0.032, 0.038, -0.068, 0.025, -0.068, 0.0);
+  earShape.bezierCurveTo(-0.068, -0.025, -0.032, -0.036, 0, -0.01);
+  earShape.closePath();
+  const earMesh = makeSpineFinMesh(
+    ctx,
+    earShape,
+    0,
+    0,
+    0.0022,
+    0.0005,
+    (fc) => {
+      fc.fillStyle = makeLin(fc, 0, 0, -0.07, 0, [
+        [0, rgbaHex(FIN, 0.88)],
+        [1, rgbaHex(BEL, 0.55)],
+      ]);
+      fc.fillRect(-0.1, -0.06, 0.14, 0.12);
+    },
+    maxAnisotropy,
+    false,
+    0,
+    { transparent: true, opacity: 0.8 }
+  ).mesh;
+  const pecLeft = new THREE.Group();
+  pecLeft.position.set(0.006, 0.195, 0.044);
+  pecLeft.add(earMesh);
+  const pecRight = new THREE.Group();
+  pecRight.position.set(0.006, 0.195, -0.044);
+  pecRight.add(earMesh.clone());
+  bodyGroup.add(pecLeft, pecRight);
+
+  const tailPivot = new THREE.Group();
+  tailPivot.position.set(-0.03, -0.25, 0);
+  bodyGroup.add(tailPivot);
+  const pelvicFin = new THREE.Group();
+  bodyGroup.add(pelvicFin);
+
+  const { eyesNormal, eyesPupil, eyesHappy } = createEyePair(ctx, bodyGroup, {
+    ex: 0.062,
+    ey: 0.258,
+    ez: 0.054,
+    er: 0.034,
+    sx: 0.96,
+    sy: 1.0,
+    yawRot: 0.18,
+    irisColor: pal.iris || "#1d3557",
+    rimColor: D,
+    happyColor: "#4a1228",
+  });
+
+  const { biteRing, biteRingMat } = createBiteRing(ctx, bodyGroup, hx + 0.025, hy, "#ffe49e", 0.042);
+
+  return {
+    speciesKey: sp.id,
+    tailPivotX: -0.03,
+    isFluke: true,
+    skipDefaultFins: true,
+    root,
+    pitchGroup,
+    yawGroup,
+    bodyGroup,
+    upperJawGroup,
+    lowerJawGroup,
+    mouthInterior,
+    tongueMesh,
+    tailPivot,
+    pecLeft,
+    pecRight,
+    pelvicFin,
+    eyesNormal,
+    eyesPupil,
+    eyesHappy,
+    biteRing,
+    biteRingMat,
+    uniforms,
+    onCustomPose: (p, open) => {
+      // Graceful upright buoyancy bob & subtle lean into forward swimming
+      bodyGroup.position.y = Math.sin(p.tailPh) * 0.018;
+      bodyGroup.rotation.z = -p.tilt - clamp(p.swimSpeed, 0, 1.5) * 0.14 + open * 0.1;
+      // Buzzing hummingbird-like dorsal & ear-pectoral fin flutter
+      const buzz = p.wag2 * (p.sucking ? 3.8 : 2.9);
+      dorsalPivot.rotation.y = Math.sin(buzz) * 0.44;
+      pecLeft.rotation.y = 0.4 + Math.sin(buzz + 0.5) * 0.38;
+      pecRight.rotation.y = -0.4 - Math.sin(buzz + 0.5) * 0.38;
+      upperJawGroup.rotation.z = open * 0.22;
+      lowerJawGroup.rotation.z = -open * 0.58;
+      mouthInterior.visible = open > 0.04;
+      if (open > 0.04) {
+        mouthInterior.scale.setScalar(0.55 + open * 0.45);
+      }
+      tongueMesh.visible = false;
+    },
+    dispose: () => {
+      for (const d of ctx.disposables) d.dispose();
+    },
+  };
+}
+
+// =====================================================================================
+// 13. NUDIBRANCH PELANGI (Rainbow Sea Slug — Neon Blue, Fiery Orange & Royal Purple)
+// =====================================================================================
+function createNudibranch3DRig(sp: Species, maxAnisotropy: number): Fish3DRig {
+  const pal = sp.pal;
+  const BLUE = pal.body || "#1888ff";
+  const PURP = pal.dark || "#7c22e8";
+  const CYAN = pal.belly || "#38d8ff";
+  const ORANGE = pal.fin || "#ff6e14";
+  const SPOT = pal.spot || "#b44cff";
+
+  const ctx = createRigContext(PURP, "#424242");
+  const { track, uniforms, makeFishMat } = ctx;
+  const { root, pitchGroup, yawGroup, bodyGroup } = baseGroups();
+
+  const xTail = -0.31;
+  const xSnout = 0.295;
+  const hx = 0.24;
+  const hy = -0.045;
+  const tipY = -0.045;
+
+  // Sleek arched sea-slug silhouette with flat crawling foot & domed mantle back
+  const topPts = sortAscX(
+    sampleBezierChain(
+      [
+        [
+          [xTail, -0.055],
+          [-0.22, 0.058],
+          [-0.08, 0.135],
+          [0.05, 0.138],
+        ],
+        [
+          [0.05, 0.138],
+          [0.165, 0.134],
+          [0.255, 0.068],
+          [xSnout, tipY + 0.008],
+        ],
+      ],
+      24
+    )
+  );
+  const botPts = sortAscX(
+    sampleBezierChain(
+      [
+        [
+          [xTail, -0.072],
+          [-0.18, -0.095],
+          [-0.02, -0.098],
+          [0.1, -0.092],
+        ],
+        [
+          [0.1, -0.092],
+          [0.195, -0.086],
+          [0.255, -0.068],
+          [xSnout - 0.004, tipY - 0.006],
+        ],
+      ],
+      24
+    )
+  );
+  const evalTop = (x: number) => interpCurveY(topPts, x);
+  const evalBot = (x: number) => interpCurveY(botPts, x);
+  const evalZ = (_x: number, t: number) => {
+    const u = clamp(t, 0, 1);
+    return 0.018 + 0.105 * Math.pow(Math.sin(Math.pow(u, 0.78) * Math.PI), 0.56);
+  };
+
+  const { mapUV, beginCanvas2D } = createWorldMapper(-0.34, 0.32, -0.15, 0.18, 512);
+  const bodyCv = document.createElement("canvas");
+  bodyCv.width = 512;
+  bodyCv.height = 512;
+  const bc = bodyCv.getContext("2d")!;
+  beginCanvas2D(bc, 0, 0);
+
+  // Rainbow gradient: neon orange crest -> electric ocean blue flank -> royal purple -> cyan skirt
+  bc.fillStyle = makeLin(bc, -0.25, -0.14, 0.22, 0.1, [
+    [0, ORANGE],
+    [0.28, PURP],
+    [0.62, BLUE],
+    [0.88, CYAN],
+    [1, ORANGE],
+  ]);
+  bc.fillRect(-0.4, -0.2, 0.8, 0.4);
+
+  // Glowing neon orange dorsal stripe & luminous purple-gold speckles
+  bc.strokeStyle = ORANGE;
+  bc.lineWidth = 0.028;
+  bc.lineCap = "round";
+  bc.beginPath();
+  bc.moveTo(-0.24, -0.03);
+  bc.quadraticCurveTo(0.0, -0.125, 0.23, -0.045);
+  bc.stroke();
+
+  const spots: [number, number, number, string][] = [
+    [-0.18, -0.02, 0.016, ORANGE],
+    [-0.1, -0.06, 0.02, "#ffdf48"],
+    [-0.02, -0.01, 0.022, SPOT],
+    [0.06, -0.07, 0.018, ORANGE],
+    [0.13, -0.03, 0.016, CYAN],
+    [-0.14, 0.04, 0.015, ORANGE],
+    [-0.04, 0.05, 0.017, "#ffdf48"],
+    [0.08, 0.04, 0.016, SPOT],
+  ];
+  for (const [sx, sy, sr, col] of spots) {
+    bc.fillStyle = rgbaHex(CYAN, 0.42);
+    bc.beginPath();
+    bc.arc(sx, sy, sr * 1.35, 0, Math.PI * 2);
+    bc.fill();
+    bc.fillStyle = col;
+    bc.beginPath();
+    bc.arc(sx, sy, sr, 0, Math.PI * 2);
+    bc.fill();
+  }
+  bc.restore();
+
+  const bodyTex = track(new THREE.CanvasTexture(bodyCv));
+  bodyTex.colorSpace = THREE.SRGBColorSpace;
+  bodyTex.anisotropy = maxAnisotropy;
+
+  const evalSeamY = (x: number) => {
+    const u = clamp((x - hx) / (xSnout - hx), 0, 1);
+    return hy + u * (tipY - hy);
+  };
+  const { bodyGeo, lowerJawGeo } = buildSlicedHeadBody({
+    xStart: xTail,
+    xHinge: hx,
+    xEnd: xSnout,
+    xLowerEnd: xSnout - 0.004,
+    jawY: hy,
+    evalTopY: evalTop,
+    evalBotY: evalBot,
+    evalSeamY,
+    evalHalfZ: (x) => evalZ(x, clamp((x - xTail) / (xSnout - xTail), 0, 1)),
+    mapUV,
+    uSteps: 50,
+    vSteps: 26,
+  });
+  track(bodyGeo);
+  track(lowerJawGeo);
+
+  const bodyMat = makeFishMat(bodyTex, { roughness: 0.42, emissiveIntensity: 0.34 });
+  injectSpineShader(bodyMat, uniforms, 0, 0);
+  bodyGroup.add(new THREE.Mesh(bodyGeo, bodyMat));
+
+  const upperJawGroup = new THREE.Group();
+  upperJawGroup.position.set(hx, hy, 0);
+  bodyGroup.add(upperJawGroup);
+  const lowerJawGroup = new THREE.Group();
+  lowerJawGroup.position.set(hx, hy, 0);
+  bodyGroup.add(lowerJawGroup);
+  const jawMat = makeFishMat(bodyTex, { roughness: 0.42, emissiveIntensity: 0.34 });
+  injectSpineShader(jawMat, uniforms, hx, hy);
+  lowerJawGroup.add(new THREE.Mesh(lowerJawGeo, jawMat));
+
+  const { mouthInterior, tongueMesh } = createOralParts(ctx, bodyGroup, lowerJawGroup, hx, hy, "#3a0e54", "#ff7840", [0.024, 0.018, 0.018], [0.018, 0.008, 0.012], 0.02);
+
+  // Twin curved glowing rhinophores (sensory horns on head)
+  const rhinoMat = track(
+    new THREE.MeshStandardMaterial({
+      color: ORANGE,
+      emissive: PURP,
+      emissiveIntensity: 0.45,
+      roughness: 0.35,
+    })
+  );
+  const rhinophores: THREE.Group[] = [];
+  for (const s of [-1, 1]) {
+    const rGrp = new THREE.Group();
+    rGrp.position.set(0.18, 0.088, s * 0.036);
+    const stalk = track(new THREE.ConeGeometry(0.017, 0.11, 10));
+    stalk.translate(0, 0.048, 0);
+    stalk.rotateZ(-0.32);
+    stalk.rotateX(s * 0.22);
+    const tip = track(new THREE.SphereGeometry(0.014, 8, 6));
+    tip.translate(0.034, 0.095, s * 0.02);
+    rGrp.add(new THREE.Mesh(stalk, rhinoMat), new THREE.Mesh(tip, rhinoMat));
+    bodyGroup.add(rGrp);
+    rhinophores.push(rGrp);
+  }
+
+  // Crown of feathery fiery-orange gill plumes on rear back (mounted on tailPivot for swaying!)
+  const tailPivot = new THREE.Group();
+  tailPivot.position.set(-0.155, 0.085, 0);
+  bodyGroup.add(tailPivot);
+  const gillMat = track(
+    new THREE.MeshStandardMaterial({
+      color: ORANGE,
+      emissive: "#ff8c1a",
+      emissiveIntensity: 0.48,
+      roughness: 0.4,
+    })
+  );
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2;
+    const plume = track(new THREE.ConeGeometry(0.018, 0.095, 7));
+    plume.rotateZ(-Math.cos(a) * 0.45 - 0.18);
+    plume.rotateX(Math.sin(a) * 0.45);
+    plume.translate(Math.cos(a) * 0.022, 0.036, Math.sin(a) * 0.022);
+    tailPivot.add(new THREE.Mesh(plume, gillMat));
+  }
+
+  // Neon purple & cyan cerata tendrils along mid-back
+  const cerataMat = track(
+    new THREE.MeshStandardMaterial({
+      color: CYAN,
+      emissive: SPOT,
+      emissiveIntensity: 0.42,
+      roughness: 0.38,
+    })
+  );
+  for (let i = 0; i < 4; i++) {
+    const cx = 0.08 - i * 0.055;
+    for (const s of [-1, 1]) {
+      const cer = track(new THREE.ConeGeometry(0.012, 0.068, 7));
+      cer.rotateZ(0.32);
+      cer.rotateX(s * 0.35);
+      cer.translate(cx, 0.125 - i * 0.008, s * 0.042);
+      bodyGroup.add(new THREE.Mesh(cer, cerataMat));
+    }
+  }
+
+  // Ruffled undulating neon skirt lobes on left/right sides (via pecLeft/pecRight)
+  const skirtShape = new THREE.Shape();
+  skirtShape.moveTo(0.18, 0);
+  skirtShape.bezierCurveTo(0.1, 0.05, 0.02, 0.015, -0.04, 0.052);
+  skirtShape.bezierCurveTo(-0.12, 0.02, -0.18, 0.045, -0.22, 0);
+  skirtShape.lineTo(-0.22, -0.02);
+  skirtShape.lineTo(0.18, -0.02);
+  skirtShape.closePath();
+  const skirtMesh = makeSpineFinMesh(
+    ctx,
+    skirtShape,
+    0,
+    0,
+    0.0028,
+    0.0007,
+    (fc) => {
+      fc.fillStyle = makeLin(fc, -0.2, 0.04, 0.18, -0.02, [
+        [0, ORANGE],
+        [0.5, PURP],
+        [1, CYAN],
+      ]);
+      fc.fillRect(-0.26, -0.06, 0.5, 0.16);
+    },
+    maxAnisotropy,
+    true,
+    0,
+    { emissiveIntensity: 0.45, transparent: true, opacity: 0.92 }
+  ).mesh;
+  const pecLeft = new THREE.Group();
+  pecLeft.position.set(0, -0.068, 0.088);
+  pecLeft.rotation.x = Math.PI * 0.38;
+  pecLeft.add(skirtMesh);
+  const pecRight = new THREE.Group();
+  pecRight.position.set(0, -0.068, -0.088);
+  pecRight.rotation.x = -Math.PI * 0.38;
+  pecRight.add(skirtMesh.clone());
+  bodyGroup.add(pecLeft, pecRight);
+
+  const pelvicFin = new THREE.Group();
+  bodyGroup.add(pelvicFin);
+
+  const nudiEz = computeEyeZ(evalTop, evalBot, (x) => evalZ(x, clamp((x - xTail) / (xSnout - xTail), 0, 1)), 0.215, 0.005, 0.032);
+  const { eyesNormal, eyesPupil, eyesHappy } = createEyePair(ctx, bodyGroup, {
+    ex: 0.215,
+    ey: 0.005,
+    ez: nudiEz,
+    er: 0.032,
+    sx: 0.95,
+    sy: 1.0,
+    yawRot: 0.22,
+    irisColor: pal.iris || "#ffe14a",
+    rimColor: PURP,
+    happyColor: "#ff8c1a",
+  });
+
+  const { biteRing, biteRingMat } = createBiteRing(ctx, bodyGroup, xSnout + 0.02, tipY, "#38d8ff", 0.045);
+
+  return {
+    speciesKey: sp.id,
+    tailPivotX: -0.155,
+    isFluke: true,
+    skipDefaultFins: true,
+    root,
+    pitchGroup,
+    yawGroup,
+    bodyGroup,
+    upperJawGroup,
+    lowerJawGroup,
+    mouthInterior,
+    tongueMesh,
+    tailPivot,
+    pecLeft,
+    pecRight,
+    pelvicFin,
+    eyesNormal,
+    eyesPupil,
+    eyesHappy,
+    biteRing,
+    biteRingMat,
+    uniforms,
+    onCustomPose: (p, open) => {
+      // Undulating sea-slug glide & swaying rhinophores + dorsal gills
+      const wave = p.wag2 * 1.4;
+      pecLeft.rotation.x = Math.PI * 0.38 + Math.sin(wave) * 0.24;
+      pecRight.rotation.x = -Math.PI * 0.38 + Math.sin(wave + 1.1) * 0.24;
+      tailPivot.rotation.z = Math.sin(wave * 0.85) * 0.22;
+      tailPivot.rotation.x = Math.cos(wave * 0.7) * 0.16;
+      rhinophores[0].rotation.z = Math.sin(wave + 0.4) * 0.16;
+      rhinophores[1].rotation.z = Math.sin(wave + 1.0) * 0.16;
+      const tightClamp = p.jaw < 0 ? clamp(-p.jaw, 0, 0.35) : 0;
+      lowerJawGroup.rotation.z = -open * 0.72 + tightClamp * 0.15;
+      const hasMouth = open > 0.03;
+      mouthInterior.visible = hasMouth;
+      if (hasMouth) {
+        mouthInterior.rotation.z = -open * 0.22;
+        mouthInterior.scale.set(0.8 + open * 0.18, 0.3 + open * 0.85, 0.56 + open * 0.14);
+      }
+      tongueMesh.visible = open > 0.045;
+    },
+    dispose: () => {
+      for (const d of ctx.disposables) d.dispose();
+    },
+  };
+}
+
+// =====================================================================================
 // DISPATCHER
 // =====================================================================================
 export function createReefFish3DRig(sp: Species, maxAnisotropy = 4): Fish3DRig | null {
@@ -5456,6 +6458,12 @@ export function createReefFish3DRig(sp: Species, maxAnisotropy = 4): Fish3DRig |
       return createButterfly3DRig(sp, maxAnisotropy);
     case "snapper":
       return createSnapper3DRig(sp, maxAnisotropy);
+    case "boxfish":
+      return createBoxfish3DRig(sp, maxAnisotropy);
+    case "seahorse":
+      return createSeahorse3DRig(sp, maxAnisotropy);
+    case "nudibranch":
+      return createNudibranch3DRig(sp, maxAnisotropy);
     default:
       return null;
   }

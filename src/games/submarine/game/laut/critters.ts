@@ -6,12 +6,27 @@
 import * as THREE from "three";
 import { SHARED } from "./glsl";
 import { mergeAux } from "./corals";
+import {
+  crabGeometry,
+  nudibranchGeometry,
+  starfishGeometry,
+  brittleStarGeometry,
+  CRAB_VS,
+  CRAB_FS,
+  NUDI_VS,
+  NUDI_FS,
+  STAR_VS,
+  BRITTLE_VS,
+  STAR_FS,
+} from "../reefInhabitants";
 
 export interface Spot {
   x: number;
   y: number;
   z: number;
   tilt?: number;
+  pitch?: number;
+  yaw?: number;
 }
 
 const FISH_VS = /* glsl */ `
@@ -372,7 +387,17 @@ export class Critters {
   group = new THREE.Group();
   private disposables: { dispose: () => void }[] = [];
 
-  constructor(fishSpots: Spot[], shrimpSpots: Spot[], krillSpots: Spot[], rng: () => number, common: string) {
+  constructor(
+    fishSpots: Spot[],
+    shrimpSpots: Spot[],
+    krillSpots: Spot[],
+    rng: () => number,
+    common: string,
+    crabSpots: Spot[] = [],
+    nudiSpots: Spot[] = [],
+    starSpots: Spot[] = [],
+    brittleSpots: Spot[] = []
+  ) {
     // ---- damselfish
     if (fishSpots.length) {
       const g = fishGeometry();
@@ -455,6 +480,116 @@ export class Critters {
       for (let i = 0; i < n; i++) mesh.setMatrixAt(i, mtx);
       mesh.frustumCulled = false;
       mesh.renderOrder = 16;
+      this.group.add(mesh);
+      this.disposables.push(g, m);
+    }
+    // ---- mini rock crabs scuttling across rock terraces
+    if (crabSpots.length) {
+      const g = crabGeometry();
+      const n = crabSpots.length;
+      const A = new Float32Array(n * 4),
+        B = new Float32Array(n * 4);
+      crabSpots.forEach((s, i) => {
+        A.set([s.x, s.y, s.z, 0], i * 4);
+        B.set([rng() * 100, 3.0 + rng() * 1.4, (s.tilt ?? 0) * 0.75, Math.floor(rng() * 3)], i * 4);
+      });
+      g.setAttribute("iA", new THREE.InstancedBufferAttribute(A, 4));
+      g.setAttribute("iB", new THREE.InstancedBufferAttribute(B, 4));
+      const m = new THREE.ShaderMaterial({
+        uniforms: { ...SHARED },
+        vertexShader: CRAB_VS,
+        fragmentShader: common + CRAB_FS,
+        side: THREE.DoubleSide,
+      });
+      const mesh = new THREE.InstancedMesh(g, m, n);
+      const mtx = new THREE.Matrix4();
+      for (let i = 0; i < n; i++) mesh.setMatrixAt(i, mtx);
+      mesh.frustumCulled = false;
+      mesh.renderOrder = 15;
+      this.group.add(mesh);
+      this.disposables.push(g, m);
+    }
+    // ---- rainbow neon nudibranchs crawling slowly on rock backs
+    if (nudiSpots.length) {
+      const g = nudibranchGeometry();
+      const n = nudiSpots.length;
+      const A = new Float32Array(n * 4),
+        B = new Float32Array(n * 4);
+      nudiSpots.forEach((s, i) => {
+        A.set([s.x, s.y, s.z, 0], i * 4);
+        B.set([rng() * 100, 2.8 + rng() * 1.3, (s.tilt ?? 0) * 0.85, Math.floor(rng() * 3)], i * 4);
+      });
+      g.setAttribute("iA", new THREE.InstancedBufferAttribute(A, 4));
+      g.setAttribute("iB", new THREE.InstancedBufferAttribute(B, 4));
+      const m = new THREE.ShaderMaterial({
+        uniforms: { ...SHARED },
+        vertexShader: NUDI_VS,
+        fragmentShader: common + NUDI_FS,
+        side: THREE.DoubleSide,
+      });
+      const mesh = new THREE.InstancedMesh(g, m, n);
+      const mtx = new THREE.Matrix4();
+      for (let i = 0; i < n; i++) mesh.setMatrixAt(i, mtx);
+      mesh.frustumCulled = false;
+      mesh.renderOrder = 15;
+      this.group.add(mesh);
+      this.disposables.push(g, m);
+    }
+    // ---- sea stars hugging curved rock faces
+    if (starSpots.length) {
+      const g = starfishGeometry();
+      const n = starSpots.length;
+      const A = new Float32Array(n * 4),
+        B = new Float32Array(n * 4),
+        C = new Float32Array(n * 2);
+      starSpots.forEach((s, i) => {
+        A.set([s.x, s.y, s.z, 0], i * 4);
+        B.set([rng() * 100, 3.6 + rng() * 1.9, s.tilt ?? 0, Math.floor(rng() * 3)], i * 4);
+        C.set([s.pitch ?? 1.0, s.yaw ?? (rng() - 0.5) * 0.5], i * 2);
+      });
+      g.setAttribute("iA", new THREE.InstancedBufferAttribute(A, 4));
+      g.setAttribute("iB", new THREE.InstancedBufferAttribute(B, 4));
+      g.setAttribute("iC", new THREE.InstancedBufferAttribute(C, 2));
+      const m = new THREE.ShaderMaterial({
+        uniforms: { ...SHARED },
+        vertexShader: STAR_VS,
+        fragmentShader: common + STAR_FS,
+        side: THREE.DoubleSide,
+      });
+      const mesh = new THREE.InstancedMesh(g, m, n);
+      const mtx = new THREE.Matrix4();
+      for (let i = 0; i < n; i++) mesh.setMatrixAt(i, mtx);
+      mesh.frustumCulled = false;
+      mesh.renderOrder = 14;
+      this.group.add(mesh);
+      this.disposables.push(g, m);
+    }
+    // ---- brittle stars curving along boulders & ledges
+    if (brittleSpots.length) {
+      const g = brittleStarGeometry();
+      const n = brittleSpots.length;
+      const A = new Float32Array(n * 4),
+        B = new Float32Array(n * 4),
+        C = new Float32Array(n * 2);
+      brittleSpots.forEach((s, i) => {
+        A.set([s.x, s.y, s.z, 0], i * 4);
+        B.set([rng() * 100, 3.8 + rng() * 2.0, s.tilt ?? 0, Math.floor(rng() * 3)], i * 4);
+        C.set([s.pitch ?? 0.96, s.yaw ?? (rng() - 0.5) * 0.5], i * 2);
+      });
+      g.setAttribute("iA", new THREE.InstancedBufferAttribute(A, 4));
+      g.setAttribute("iB", new THREE.InstancedBufferAttribute(B, 4));
+      g.setAttribute("iC", new THREE.InstancedBufferAttribute(C, 2));
+      const m = new THREE.ShaderMaterial({
+        uniforms: { ...SHARED },
+        vertexShader: BRITTLE_VS,
+        fragmentShader: common + STAR_FS,
+        side: THREE.DoubleSide,
+      });
+      const mesh = new THREE.InstancedMesh(g, m, n);
+      const mtx = new THREE.Matrix4();
+      for (let i = 0; i < n; i++) mesh.setMatrixAt(i, mtx);
+      mesh.frustumCulled = false;
+      mesh.renderOrder = 14;
       this.group.add(mesh);
       this.disposables.push(g, m);
     }

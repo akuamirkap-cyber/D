@@ -1,4 +1,4 @@
-import { SPECIES, SKINS, FRY, POISON_FISH, skinToSpecies, BOT_NAMES } from "./species";
+import { SPECIES, SKINS, FRY, POISON_FISH, POISON_NUDIBRANCH, skinToSpecies, BOT_NAMES } from "./species";
 import type { Species, Skin } from "./species";
 import { fishSprite, fishMouthOffset, coinSprite, beginSpriteFrame, spriteBudgetLeft } from "./sprites";
 import type { EyeExpr, JawState } from "./sprites";
@@ -1333,9 +1333,11 @@ export class Game {
   }
 
   spawnPoisonFish(initial = false) {
-    const sp = this.mode3D && !this.pixelMode ? { ...POISON_FISH, is3D: true } : POISON_FISH;
+    const isNudi = Math.random() < 0.42;
+    const baseSp = isNudi ? POISON_NUDIBRANCH : POISON_FISH;
+    const sp = this.mode3D && !this.pixelMode ? { ...baseSp, is3D: true } : baseSp;
     const r = sp.minR + Math.random() * (sp.maxR - sp.minR);
-    const pref = initial && Math.random() < 0.48 ? "upper" : "any";
+    const pref = isNudi ? "upper" : initial && Math.random() < 0.48 ? "upper" : "any";
     const pos = this.randomSpawnPos(r, !initial, pref);
     const f = new Fish("npc", sp, sp.id, pos.x, pos.y, r * r);
     f.face = Math.random() < 0.5 ? 1 : -1;
@@ -4967,6 +4969,7 @@ export class Game {
         f.sp.style === "seadragon" ||
         f.sp.style === "axolotl" ||
         f.sp.style === "whaleshark" ||
+        f.sp.style === "nudibranch" ||
         f.sp.id === "skin-lumba_pink" ||
         f.sp.id === "skin-snapturtle_albino")
     ) {
@@ -4985,7 +4988,9 @@ export class Game {
                   ? "rgba(255, 150, 215, 0.46)"
                   : f.sp.style === "whaleshark"
                     ? "rgba(92, 230, 255, 0.48)"
-                    : "rgba(255, 168, 92, 0.42)";
+                    : f.sp.style === "nudibranch"
+                      ? "rgba(168, 120, 255, 0.46)"
+                      : "rgba(255, 168, 92, 0.42)";
       const rr = f.r * 2.15;
       ctx.globalCompositeOperation = "lighter";
       ctx.globalAlpha = (f.y > DEEP_START - 120 ? 0.55 : 0.26) + Math.sin(this.t * 3.4 + f.id) * 0.08;

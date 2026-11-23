@@ -47,7 +47,7 @@ import { ReefGarden, type RockBoulderSpot } from "./reefEcology";
 import { sandHeight, type BedSurface } from "./geology";
 import { ReefLifeRenderer, type ReefCritter } from "../reefInhabitants";
 import type { ReefMixMode, ReefRockMode } from "../../save";
-import { brainCoral, anemone, pillarCoral, mushroomCoral, seaPen, goldenKelp } from "./corals";
+import { brainCoral, anemone, pillarCoral, mushroomCoral, seaPen, goldenKelp, turfAlgae, fanAlgae } from "./corals";
 import { Critters } from "./critters";
 import type { Spot } from "./critters";
 import { SeaMines3D, type Mine3DData } from "./seaMines";
@@ -75,8 +75,10 @@ const K_STAG = 0,
   K_PILLAR = 9,
   K_MUSH = 10,
   K_PEN = 11,
-  K_GKELP = 12; // tall golden kelp fronds
-const N_KINDS = 13;
+  K_GKELP = 12, // tall golden kelp fronds
+  K_TURF = 13, // short seagrass / turf algae carpeting upper rock backs
+  K_FANALGAE = 14; // pleated Padina fan algae
+const N_KINDS = 15;
 const KIND_H: [number, number][] = [
   [20, 38],
   [26, 50],
@@ -91,9 +93,11 @@ const KIND_H: [number, number][] = [
   [18, 32], // mushroom
   [34, 62], // sea pen
   [70, 130], // golden kelp
+  [7, 15], // turf algae
+  [11, 21], // fan algae
 ];
-// corals are rigid (no animation); only kelp blades move with the current
-const KIND_SWAY = [0, 0, 0, 0, 0, 0.2, 0, 0, 0, 0, 0, 0, 0.14];
+// corals are rigid; kelp, turf algae and fan algae sway smoothly with the current
+const KIND_SWAY = [0, 0, 0, 0, 0, 0.2, 0, 0, 0, 0, 0, 0, 0.14, 0.38, 0.24];
 
 const CORAL_COL: RGB[][][] = [
   // zone 0 : warm sunlit garden
@@ -158,9 +162,21 @@ const GOLD: RGB[] = [
   [0.98, 0.86, 0.42],
 ];
 const GKELP_W = [7, 5, 2, 3];
+const TURF_COL: RGB[][] = [
+  [[0.22, 0.72, 0.34], [0.36, 0.78, 0.26], [0.16, 0.64, 0.42]],
+  [[0.18, 0.68, 0.42], [0.28, 0.76, 0.36], [0.20, 0.62, 0.50]],
+  [[0.14, 0.84, 0.56], [0.18, 0.78, 0.72], [0.28, 0.88, 0.48]],
+  [[0.22, 0.62, 0.46], [0.28, 0.72, 0.52], [0.18, 0.56, 0.44]],
+];
+const FANALGAE_COL: RGB[][] = [
+  [[0.56, 0.76, 0.42], [0.70, 0.78, 0.48], [0.42, 0.72, 0.52]],
+  [[0.46, 0.74, 0.56], [0.62, 0.76, 0.50], [0.38, 0.68, 0.62]],
+  [[0.36, 0.88, 0.74], [0.48, 0.82, 0.86], [0.42, 0.86, 0.60]],
+  [[0.44, 0.68, 0.54], [0.58, 0.72, 0.58], [0.38, 0.62, 0.56]],
+];
 for (let z = 0; z < 4; z++) {
-  CORAL_COL[z].push([[0.5, 0.45, 0.4]], ...EXTRA_COL[z], GOLD);
-  KIND_W[z].push(...EXTRA_W[z], GKELP_W[z]);
+  CORAL_COL[z].push([[0.5, 0.45, 0.4]], ...EXTRA_COL[z], GOLD, TURF_COL[z], FANALGAE_COL[z]);
+  KIND_W[z].push(...EXTRA_W[z], GKELP_W[z], 0, 0);
 }
 const ZONE_GLOW = [0, 0.25, 1, 0.8];
 
@@ -207,7 +223,7 @@ class Batch {
       sy = Math.cos(tilt) * sink;
     this.add(kind, x + sx, y + sy, z, h, tilt, turn, tint, ph, glow, sq);
     const slopeShrink = Math.max(0.62, 1 - Math.abs(tilt) * 0.35);
-    const w = Math.max(4, h * (kind === K_KELP || kind === K_PEN || kind === K_GKELP ? 0.11 : kind === K_FAN ? 0.23 : kind === K_PLATE || kind === K_MUSH ? 0.27 : kind === K_BRAIN ? 0.48 : kind === K_ANEM ? 0.32 : 0.29) * (0.8 + sq * 0.28) * slopeShrink);
+    const w = Math.max(4, h * (kind === K_KELP || kind === K_PEN || kind === K_GKELP ? 0.11 : kind === K_TURF || kind === K_FANALGAE ? 0.22 : kind === K_FAN ? 0.23 : kind === K_PLATE || kind === K_MUSH ? 0.27 : kind === K_BRAIN ? 0.48 : kind === K_ANEM ? 0.32 : 0.29) * (0.8 + sq * 0.28) * slopeShrink);
     const bt: RGB = [tint[0] * 0.62 + 0.08, tint[1] * 0.62 + 0.07, tint[2] * 0.62 + 0.06];
     this.add(K_BASE, x + sx * 0.72, y + sy * 0.72 + 1.1, z - 0.5, w, tilt * 0.8, turn, bt, ph, glow * 0.4, 1);
   }
@@ -304,6 +320,10 @@ export class LautWorld {
   private fishSpots: Spot[] = [];
   private shrimpSpots: Spot[] = [];
   private krillSpots: Spot[] = [];
+  private crabSpots: Spot[] = [];
+  private nudiSpots: Spot[] = [];
+  private starSpots: Spot[] = [];
+  private brittleSpots: Spot[] = [];
   private critters: Critters | null = null;
   private vents: { g: THREE.Group; x: number; mats: THREE.ShaderMaterial[]; pts: THREE.Points }[] = [];
 
@@ -386,7 +406,17 @@ export class LautWorld {
       this.disposables.push(this.reefLife);
     }
     if (this.reefMix !== "game2") {
-      this.critters = new Critters(this.fishSpots, this.shrimpSpots, this.krillSpots, mulberry32(9191), COMMON);
+      this.critters = new Critters(
+        this.fishSpots,
+        this.shrimpSpots,
+        this.krillSpots,
+        mulberry32(9191),
+        COMMON,
+        this.crabSpots,
+        this.nudiSpots,
+        this.starSpots,
+        this.brittleSpots
+      );
       this.scenes[1].add(this.critters.group);
       this.disposables.push(this.critters);
     }
@@ -450,6 +480,8 @@ export class LautWorld {
       this.kindGeo[K_MUSH] = mushroomCoral(5);
       this.kindGeo[K_PEN] = seaPen(1);
       this.kindGeo[K_GKELP] = goldenKelp(2);
+      this.kindGeo[K_TURF] = turfAlgae(2);
+      this.kindGeo[K_FANALGAE] = fanAlgae(3);
     }
     if (this.useG1Rock || this.reefMix !== "game2") {
       for (let i = 0; i < 3; i++) {
@@ -731,6 +763,13 @@ export class LautWorld {
         const tk = rng() < 0.6 ? K_ANEM : K_BLOOM;
         b.rooted(tk, tx, wy + 1, zSurface(tx, wy + 3) + 7 + rng() * 4, 7 + rng() * 9, slope * 0.8 + (rng() - 0.5) * 0.4, rng() * 6.28, pick(rng, GOLD), rng() * 6.28, glow, 1 + rng() * 0.5);
       }
+      // lush short seagrass/turf algae & pleated fan algae carpeting rock crowns across all zones
+      if (rng() < 0.86) {
+        const tx = wx + (rng() - 0.5) * 10;
+        const tKind = rng() < 0.68 ? K_TURF : K_FANALGAE;
+        const th = KIND_H[tKind][0] + rng() * (KIND_H[tKind][1] - KIND_H[tKind][0]);
+        b.rooted(tKind, tx, wy + 1.2, zSurface(tx, wy + 3) + 4 + rng() * 7, th, slope * 0.72 + (rng() - 0.5) * 0.25, rng() * 6.28, pick(rng, CORAL_COL[zone][tKind]), rng() * 6.28, glow * 0.45, 0.9 + rng() * 0.45);
+      }
     }
     // golden kelp groves on wide sunlit crowns
     if (zone < 2 && last - first > 90) {
@@ -748,23 +787,38 @@ export class LautWorld {
         }
       }
     }
-    // reef critters: damselfish & swirling krill hovering over coral heads, shrimp perched between corals
+    // reef critters: damselfish & swirling krill hovering over coral heads, shrimp/crabs/nudibranchs/sea stars on rock crowns
     for (let x = first + 14; x < last - 14; x += 38 + rng() * 58) {
       const xi = Math.round(x);
       const ty = f.top[xi];
       if (ty < 0) continue;
       const wx = f.x + xi,
         wy = f.y + ty;
+      const a = f.top[Math.max(0, xi - 5)],
+        c = f.top[Math.min(W - 1, xi + 5)];
+      const tilt = a >= 0 && c >= 0 ? Math.atan2(-(c - a), 10) : 0;
       if (rng() < 0.72) this.fishSpots.push({ x: wx, y: wy - 18 - rng() * 22, z: zSurface(wx, wy) + 14 + rng() * 10 });
       if (rng() < 0.74) {
-        const a = f.top[Math.max(0, xi - 5)],
-          c = f.top[Math.min(W - 1, xi + 5)];
-        const tilt = a >= 0 && c >= 0 ? Math.atan2(-(c - a), 10) : 0;
         const nSh = rng() < 0.35 ? 2 : 1;
         for (let s = 0; s < nSh; s++) {
           const sx = wx + (rng() - 0.5) * 14;
           this.shrimpSpots.push({ x: sx, y: wy + 0.5 + (rng() - 0.5) * 1.5, z: zSurface(sx, wy + 3) + 6 + rng() * 5, tilt });
         }
+      }
+      if (Math.abs(tilt) < 0.42 && rng() < 0.58) {
+        const cx = wx + (rng() - 0.5) * 12;
+        this.crabSpots.push({ x: cx, y: wy + 0.8, z: zSurface(cx, wy + 3) + 7 + rng() * 5, tilt });
+      }
+      if (rng() < 0.62) {
+        const nx = wx + (rng() - 0.5) * 14;
+        this.nudiSpots.push({ x: nx, y: wy + 1.0, z: zSurface(nx, wy + 3) + 8 + rng() * 6, tilt });
+      }
+      if (rng() < 0.66) {
+        const sx = wx + (rng() - 0.5) * 14;
+        const sy = wy + 7 + rng() * 12;
+        const spot: Spot = { x: sx, y: sy, z: zSurface(sx, sy) + 3.5, tilt, pitch: 1.02, yaw: (rng() - 0.5) * 0.4 };
+        if (rng() < 0.55) this.starSpots.push(spot);
+        else this.brittleSpots.push(spot);
       }
       if (rng() < 0.78) {
         const nK = 2 + Math.floor(rng() * 3);
@@ -927,8 +981,24 @@ export class LautWorld {
           if (Math.abs(u) > 0.55 && rng() < 0.5) kind = rng() < 0.5 ? K_PLATE : K_BLOOM;
           const hh = (KIND_H[kind][0] + rng() * (KIND_H[kind][1] - KIND_H[kind][0])) * (0.5 + r / 170);
           b.rooted(kind, px, py, bz, hh, -sfc.tilt * 0.9 + (rng() - 0.5) * 0.2, rng() * 6.28, pick(rng, CORAL_COL[zone][kind]), rng() * 6.28, glow, 0.85 + rng() * 0.4);
+          if (rng() < 0.65) {
+            const tKind = rng() < 0.65 ? K_TURF : K_FANALGAE;
+            const th = KIND_H[tKind][0] + rng() * (KIND_H[tKind][1] - KIND_H[tKind][0]);
+            b.rooted(tKind, px + (rng() - 0.5) * 6, py + 0.8, bz + 2, th * 0.85, -sfc.tilt * 0.7, rng() * 6.28, pick(rng, CORAL_COL[zone][tKind]), rng() * 6.28, glow * 0.4, 0.9 + rng() * 0.3);
+          }
           if (k < 2 || rng() < 0.45) {
             this.shrimpSpots.push({ x: px + (rng() - 0.5) * 8, y: py + 0.5, z: bz + 3, tilt: -sfc.tilt * 0.6 });
+          }
+          if (Math.abs(sfc.tilt) < 0.45 && rng() < 0.38) {
+            this.crabSpots.push({ x: px + (rng() - 0.5) * 6, y: py + 0.4, z: bz + 3, tilt: -sfc.tilt * 0.6 });
+          }
+          if (rng() < 0.42) {
+            this.nudiSpots.push({ x: px + (rng() - 0.5) * 6, y: py + 0.4, z: bz + 3.5, tilt: -sfc.tilt * 0.7 });
+          }
+          if (rng() < 0.48) {
+            const sp: Spot = { x: px, y: py + 4, z: bz + 2.5, tilt: -sfc.tilt * 0.75, pitch: 0.98, yaw: (rng() - 0.5) * 0.4 };
+            if (rng() < 0.5) this.starSpots.push(sp);
+            else this.brittleSpots.push(sp);
           }
           if (rng() < 0.55) {
             this.krillSpots.push({ x: px + (rng() - 0.5) * 14, y: py - 8 - rng() * 14, z: bz + 5 + rng() * 6 });
@@ -1155,6 +1225,14 @@ export class LautWorld {
             const sx = x + (rng() - 0.5) * 22;
             this.shrimpSpots.push({ x: sx, y: gy + 0.5, z: floorZ(sx, gy + 3) + 6 + rng() * 4, tilt });
           }
+        }
+        if (rng() < 0.55) {
+          const cx = x + (rng() - 0.5) * 18;
+          this.crabSpots.push({ x: cx, y: gy + 0.6, z: floorZ(cx, gy + 3) + 7 + rng() * 5, tilt });
+        }
+        if (rng() < 0.45) {
+          const nx = x + (rng() - 0.5) * 18;
+          this.nudiSpots.push({ x: nx, y: gy + 0.6, z: floorZ(nx, gy + 3) + 8 + rng() * 5, tilt });
         }
         if (rng() < 0.8) {
           const nK = 2 + Math.floor(rng() * 3);

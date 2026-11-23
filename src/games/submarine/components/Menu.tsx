@@ -74,6 +74,9 @@ const TILE_SCALE: Record<string, number> = {
   lumba_pink: 1.04,
   snapturtle: 1.06,
   snapturtle_albino: 1.06,
+  boxfish: 0.94,
+  seahorse: 1.0,
+  nudibranch: 1.02,
 };
 
 function drawFishCanvas(

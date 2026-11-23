@@ -487,17 +487,30 @@ void main(){
   float alg = smoothstep(.55, .7, st) * shallow * (1. - uCrustAll);
   base = mix(base, vec3(.42, .46, .17), alg * .38);
 
+  float mossMask = up * smoothstep(.34, .74, n1) * smoothstep(.40, .72, g2.x) * (1. - uCrustAll * .7);
+  base = mix(base, vec3(.14, .48, .32), mossMask * .46);
+
   float ao = (1. - .38 * pit) * (.7 + .3 * smoothstep(0., 18., -vSdf.x));
   vec3 col = lightSurface(base, N, vWP, ao);
 
-  if (uVeinK > .01) {
-    float ridge = 1. - abs(2. * fbm2(q * .034 + s * 2.) - 1.);
-    float vein = smoothstep(.955, .992, ridge) * uVeinK * .8;
-    col += uVein * vein * (.65 + .35 * sin(uTime * 1.4 + q.x * .03 + q.y * .02));
-  }
+  // Bioluminescent moss & glowing mineral veins inside rock fissures/crevices (cyan, emerald, violet)
+  float crack1 = 1. - abs(2. * fbm2(q * .034 + s * 2.) - 1.);
+  float crack2 = 1. - abs(2. * fbm2(q * .078 - s * 1.3 + vec2(3.7, 8.1)) - 1.);
+  float fissure = max(smoothstep(.915, .988, crack1), smoothstep(.935, .992, crack2) * .78);
+  float creviceWeight = smoothstep(.22, .85, pit) * .72 + (1. - ao) * .65 + .28;
+  float dimZone = .22 + .95 * smoothstep(320., 1320., wy) + .45 * smoothstep(-1.2, 2.6, vSdf.y) * uCave;
+  float hueShift = vnoise(q * .018 + s * 3.1);
+  vec3 bioCol = hueShift < .36
+    ? mix(vec3(.12, .94, .62), vec3(.10, .92, 1.0), smoothstep(.12, .36, hueShift))
+    : mix(vec3(.10, .92, 1.0), vec3(.72, .36, 1.0), smoothstep(.36, .78, hueShift));
+  if (uVeinK > .01) bioCol = mix(bioCol, uVein, .35 * clamp(uVeinK, 0., 1.));
+  float pulse = .56 + .44 * sin(uTime * 1.18 + q.x * .026 + q.y * .021 + hueShift * 6.28);
+  float glowStrength = (.38 + uVeinK * .52) * fissure * clamp(creviceWeight, .25, 1.25) * dimZone * pulse;
+  col += bioCol * glowStrength;
+  col += mix(vec3(.14, .88, .58), vec3(.18, .92, .98), hueShift) * mossMask * (.06 + .16 * smoothstep(420., 1350., wy)) * pulse;
 
   float hollow = smoothstep(-1.5, 3., vSdf.y) * uCave;
-  vec3 gloom = waterCol(wy) * .16 + base * .035 + uVein * .012;
+  vec3 gloom = waterCol(wy) * .16 + base * .035 + bioCol * fissure * .14;
   col = mix(col, gloom, hollow * .88);
 
   float rim = pow(1. - clamp(N.z, 0., 1.), 2.4);

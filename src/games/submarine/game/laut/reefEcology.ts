@@ -18,7 +18,7 @@ import {
   sandHeight,
   type SurfaceHit,
 } from "./geology";
-import { reefForm, REEF_KINDS, STAG, FAN, SPONGE, PORITES, PLATE, KELP, BUBBLE, WHIP, ANEMONE, ORGAN, LETTUCE } from "./reefForms";
+import { reefForm, REEF_KINDS, STAG, FAN, SPONGE, PORITES, PLATE, KELP, BUBBLE, WHIP, ANEMONE, ORGAN, LETTUCE, TURF, FANALGAE } from "./reefForms";
 import { placeReefLife } from "../reefInhabitants";
 
 const TAU = Math.PI * 2,
@@ -68,6 +68,8 @@ const hues: RGB[][] = [
   [[1, 0.58, 0.31], [0.99, 0.43, 0.55], [0.82, 0.63, 1], [0.42, 0.88, 0.85]],
   [[0.96, 0.45, 0.56], [1, 0.6, 0.37], [0.66, 0.54, 0.96], [0.48, 0.87, 0.84]],
   [[0.42, 0.88, 0.93], [0.58, 0.65, 1], [0.7, 0.97, 0.72], [0.96, 0.63, 0.82]],
+  [[0.22, 0.78, 0.44], [0.36, 0.85, 0.34], [0.16, 0.72, 0.56], [0.48, 0.86, 0.38]],
+  [[0.46, 0.74, 0.42], [0.32, 0.78, 0.62], [0.62, 0.74, 0.36], [0.28, 0.68, 0.54]],
 ];
 const habitatNames = [
   "Teras bercahaya",
@@ -201,12 +203,23 @@ function limestone(
           float shelf=smoothstep(.16,.81,n.y)*(1.-occ*.6);
           float caustic=pow(.5+.5*sin(wp.x*.13+wp.z*.08+uTime*.68+3.*noise3(wp*.018)),11.);
           c+=vec3(.06,.19,.23)*caustic*shelf*(1.-uDepth*.16);
-          float vein=smoothstep(.87,.97,noise3(wp*.071+vec3(2.,5.,9.)))*smoothstep(.35,.88,n.y);
+          float crackW=1.-abs(2.*noise3(wp*.085+vec3(2.,5.,9.))-1.);
+          float crackF=1.-abs(2.*noise3(wp*.18+vec3(11.,3.,7.))-1.);
+          float fissure=max(smoothstep(.88,.985,crackW),smoothstep(.90,.99,crackF)*.72)+seam*.65;
+          float bioHue=noise3(wp*.022+vec3(4.,1.,8.));
+          vec3 bioTint=bioHue<.35
+            ? mix(vec3(.12,.94,.62),vec3(.10,.92,1.),smoothstep(.12,.35,bioHue))
+            : mix(vec3(.10,.92,1.),vec3(.70,.36,1.),smoothstep(.35,.78,bioHue));
+          float bioWave=.55+.45*sin(uTime*1.15+wp.x*.028+wp.y*.024+bioHue*6.28);
+          float depthDim=.24+.32*uDepth+smoothstep(300.,1350.,-wp.y)*.55;
+          float moss=smoothstep(.38,.88,n.y)*smoothstep(.58,.86,weather)*(1.-occ*.4);
+          c=mix(c,c+vec3(.08,.36,.22),.32*moss);
           float rim=smoothstep(.09,.77,lip);
           c+=vec3(.10,.47,.63)*rim*(.42+.14*sin(uTime*1.3+wp.x*.043));
-          c+=vec3(.07,.40,.61)*mouth*(.66+.17*sin(wp.x*.045+uTime*.71));
+          c+=vec3(.07,.40,.61)*mouth*(.66+.17*sin(uTime*.71+wp.x*.045));
           c=mix(c,vec3(.011,.078,.15)+c*.22,mouth*(1.-max(0.,n.y))*.30);
-          c+=vec3(.06,.35,.42)*vein*.38;
+          c+=bioTint*clamp(fissure,0.,1.2)*(pit*.65+occ*.5+.35)*depthDim*bioWave*.58;
+          c+=bioTint*moss*bioWave*depthDim*.16;
           float under=1.-smoothstep(-.10,.30,n.y);
           c=mix(c,vec3(.014,.088,.17)+alb*.14,under*.57);
         }
@@ -327,7 +340,7 @@ export class ReefGarden {
           tints.set([...p.color, p.phase], i * 4);
           data.set(
             [
-              kind === KELP ? 0.047 : kind === FAN || kind === WHIP || kind === ANEMONE ? 0.018 : 0.002,
+              kind === KELP ? 0.047 : kind === TURF ? 0.068 : kind === FANALGAE ? 0.036 : kind === FAN || kind === WHIP || kind === ANEMONE ? 0.018 : 0.002,
               zone > 1 ? 0.28 : 0,
             ],
             i * 2,
@@ -540,7 +553,7 @@ export class ReefGarden {
         Math.abs(site.point.x - f.cave.x) < f.cave.rx * 0.91
       )
         return false;
-      const rad = size * [0.42, 0.51, 0.36, 0.57, 0.83, 0.22, 0.48, 0.23, 0.58, 0.46, 0.76][kind];
+      const rad = size * [0.42, 0.51, 0.36, 0.57, 0.83, 0.22, 0.48, 0.23, 0.58, 0.46, 0.76, 0.16, 0.20][kind];
       for (const other of attachments) {
         const dx = site.point.x - other.x,
           dz = site.point.z - other.z,
@@ -718,6 +731,16 @@ export class ReefGarden {
         );
       }
     });
+    // Carpet upper rock crowns with swaying short turf seagrass & pleated fan algae
+    for (let k = 0; k < 22; k++) {
+      const tx = cx + (rng() - 0.5) * f.rx * 1.48;
+      const tz = (rng() - 0.5) * halfZ * 1.05;
+      const h = at(tx, tz);
+      if (!h || h.normal.y < 0.48) continue;
+      const tk = rng() < 0.68 ? TURF : FANALGAE;
+      const tsz = (tk === TURF ? 7.5 + rng() * 6.5 : 10 + rng() * 8) * (f.zone > 1 ? 0.85 : 1);
+      place(h, tk, tsz, hues[tk][(k + f.zone) % 4], patches + 40 + (k % 5), TAU * rng(), k % 3);
+    }
     for (let k = 0; k < stones.length; k++) {
       const m = stones[k].elements,
         w = 4.5 + rng() * 5.8;
@@ -872,7 +895,7 @@ export class ReefGarden {
     const attachments: Attachment[] = [];
     const plants: Plant[] = [];
     const scale = clamp((f.rx / 145) ** 0.38, 0.72, 1.15);
-    const footprints = [0.42, 0.51, 0.36, 0.57, 0.83, 0.22, 0.48, 0.23, 0.58, 0.46, 0.76];
+    const footprints = [0.42, 0.51, 0.36, 0.57, 0.83, 0.22, 0.48, 0.23, 0.58, 0.46, 0.76, 0.16, 0.20];
     const wind = rng() < 0.5 ? -1 : 1;
     const inlet = f.x + f.cxl + wind * f.rx * (0.06 + rng() * 0.14);
     const gap = f.rx * (0.07 + rng() * 0.04);
@@ -1114,6 +1137,28 @@ export class ReefGarden {
       }
     }
 
+    // Short turf seagrass & fan algae tufting across upper Game 1 stone ridge
+    if (first >= 0 && span > 18) {
+      const turfStep = mixSparse ? 20 : 12;
+      for (let x = first + 6; x < last - 6; x += turfStep + rng() * 8) {
+        const xi = Math.round(x);
+        const ty = f.top[xi];
+        if (ty < 0) continue;
+        const leftY = f.top[Math.max(0, xi - 5)],
+          rightY = f.top[Math.min(W - 1, xi + 5)];
+        if (leftY < 0 || rightY < 0) continue;
+        if (Math.max(0, leftY - ty, rightY - ty) > 13) continue;
+        const wx = f.x + xi;
+        const wy = f.y + ty + 2.5;
+        const crownBias = new T.Vector3(rightY - leftY, 14, 3.6).normalize();
+        const site = surfaceAt(wx, wy, crownBias);
+        if (!site) continue;
+        const tk = rng() < 0.66 ? TURF : FANALGAE;
+        const tsz = (tk === TURF ? 7 + rng() * 6 : 9 + rng() * 7) * scale;
+        place(site, tk, tsz, hues[tk][(xi + f.zone) % 4], 95 + (xi % 6), TAU * rng(), xi % 3, 0.65, 0.35);
+      }
+    }
+
     // Game 2 corals perched directly on Game 1 crown boulders
     boulderSpots.forEach((bs, k) => {
       if (mixSparse && k % 2 === 1) return;
@@ -1150,7 +1195,7 @@ export class ReefGarden {
     const plants: Plant[] = [];
     const attachments: Attachment[] = [];
     const floorKinds = [FAN, SPONGE, PORITES, PLATE, BUBBLE, WHIP, ANEMONE, ORGAN, LETTUCE];
-    const footprints = [0.42, 0.51, 0.36, 0.57, 0.83, 0.22, 0.48, 0.23, 0.58, 0.46, 0.76];
+    const footprints = [0.42, 0.51, 0.36, 0.57, 0.83, 0.22, 0.48, 0.23, 0.58, 0.46, 0.76, 0.16, 0.20];
 
     const addFloorPlant = (
       x: number,

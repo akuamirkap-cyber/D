@@ -11,8 +11,10 @@ export const STAG = 0,
   WHIP = 7,
   ANEMONE = 8,
   ORGAN = 9,
-  LETTUCE = 10;
-export const REEF_KINDS = 11;
+  LETTUCE = 10,
+  TURF = 11,
+  FANALGAE = 12;
+export const REEF_KINDS = 13;
 const TAU = Math.PI * 2;
 
 class Growth {
@@ -504,6 +506,65 @@ function lettuce(seed: number) {
   return m.geometry();
 }
 
+function turfGrass(seed: number) {
+  const r = mulberry32(seed),
+    m = new Growth();
+  const blades = 16;
+  for (let i = 0; i < blades; i++) {
+    const a = i * 2.39996 + r() * 0.4,
+      rad = Math.sqrt((i + 0.3) / blades) * 0.34,
+      bx = Math.cos(a) * rad,
+      bz = Math.sin(a) * rad * 0.85,
+      h = 0.52 + 0.45 * r();
+    const off = m.tips.length,
+      rows = 4;
+    for (let j = 0; j <= rows; j++) {
+      const t = j / rows,
+        w = 0.038 * (1 - t * 0.88),
+        arch = t * t * 0.16;
+      const sx = -Math.sin(a) * w,
+        sz = Math.cos(a) * w;
+      m.add(bx + Math.cos(a) * arch + sx, t * h, bz + Math.sin(a) * arch + sz, t);
+      m.add(bx + Math.cos(a) * arch - sx, t * h, bz + Math.sin(a) * arch - sz, t);
+      if (j < rows) {
+        const b = off + j * 2;
+        m.indices.push(b, b + 1, b + 2, b + 1, b + 3, b + 2);
+      }
+    }
+  }
+  return m.geometry();
+}
+function padinaFan(seed: number) {
+  const r = mulberry32(seed),
+    m = new Growth();
+  for (let i = 0; i < 4; i++) {
+    const yaw = (i / 4) * TAU + r() * 0.6,
+      off = m.tips.length,
+      cols = 6,
+      rows = 4;
+    for (let j = 0; j <= rows; j++)
+      for (let k = 0; k <= cols; k++) {
+        const u = k / cols - 0.5,
+          t = j / rows,
+          ang = u * 1.55,
+          rad = 0.1 + t * (0.64 + 0.2 * r()),
+          pleat = Math.sin(u * 13 + i) * 0.035 * t * t;
+        const lx = Math.sin(ang) * rad * (0.14 + 0.86 * t),
+          ly = Math.cos(ang * 0.5) * rad * 0.9,
+          lz = Math.cos(ang) * 0.08 * t + pleat;
+        const rx = lx * Math.cos(yaw) - lz * Math.sin(yaw),
+          rz = lx * Math.sin(yaw) + lz * Math.cos(yaw);
+        m.add(rx + Math.cos(yaw) * 0.06, ly, rz + Math.sin(yaw) * 0.06, 0.15 + 0.85 * t);
+        if (j < rows && k < cols) {
+          const stride = cols + 1,
+            q = off + j * stride + k;
+          m.indices.push(q, q + 1, q + stride, q + 1, q + stride + 1, q + stride);
+        }
+      }
+  }
+  return m.geometry();
+}
+
 export function reefForm(kind: number, seed: number) {
   return kind === STAG
     ? branching(seed, false)
@@ -525,5 +586,9 @@ export function reefForm(kind: number, seed: number) {
                     ? anemone(seed)
                     : kind === ORGAN
                       ? organPipe(seed)
-                      : lettuce(seed);
+                      : kind === LETTUCE
+                        ? lettuce(seed)
+                        : kind === TURF
+                          ? turfGrass(seed)
+                          : padinaFan(seed);
 }
